@@ -1,0 +1,1139 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>صانع الاستبيانات</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Amiri:wght@400;700&display=swap">
+<style>
+/* Layout: one centred column (max 760px). Sticky top bar; home with templates + forms; tabbed editor; a white "sheet" for respondents, paged by sections. */
+:root{
+  --bg:#F0F5F5; --surface:#FFFFFF; --line:#D2DEDE; --ink:#11292B; --muted:#587072;
+  --accent:#0B7A75; --accent-ink:#FFFFFF; --accent-soft:#DCF0EE; --danger:#B3342A; --ok:#1E7A46;
+  --c1:#0B7A75; --c2:#C2570C; --c3:#3B5BDB; --c4:#9C36B5; --c5:#B08900; --c6:#C2255C;
+  --ui:'Cairo',system-ui,sans-serif; --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1819; --surface:#142425; --line:#254041; --ink:#E3F0EF; --muted:#8FA9A9;
+  --accent:#3CC9BF; --accent-ink:#04201F; --accent-soft:#12383A; --danger:#FF8F80; --ok:#6FD39A;
+  --c1:#3CC9BF; --c2:#FF9E57; --c3:#7C9CFF; --c4:#D68BEA; --c5:#E5C34A; --c6:#FF7BA9; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1819; --surface:#142425; --line:#254041; --ink:#E3F0EF; --muted:#8FA9A9;
+  --accent:#3CC9BF; --accent-ink:#04201F; --accent-soft:#12383A; --danger:#FF8F80; --ok:#6FD39A;
+  --c1:#3CC9BF; --c2:#FF9E57; --c3:#7C9CFF; --c4:#D68BEA; --c5:#E5C34A; --c6:#FF7BA9; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 var(--ui);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{line-height:1.3;text-wrap:balance;margin:0}
+.wrap{max-width:760px;margin-inline:auto}
+.muted{color:var(--muted)}
+.grow{flex:1}
+
+#bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;margin-block:12px 20px}
+.bar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px}
+.brand{font-weight:700;font-size:1.05rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:4px 10px;cursor:pointer;font-size:.85rem;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600;line-height:1.3}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger)}
+.btn.sm{padding:5px 10px;font-size:.9rem}
+.btn[disabled]{opacity:.55;cursor:default}
+.ib{border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:1.1rem;line-height:1;padding:6px 8px;border-radius:6px}
+.ib:hover{background:var(--accent-soft);color:var(--ink)}
+.ib[disabled]{opacity:.35;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.in{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 12px;min-width:0}
+textarea.in{resize:vertical}
+.in:focus{border-color:var(--accent)}
+
+.hero{display:grid;gap:10px;margin-bottom:22px}
+.hero h1{font-size:1.5rem}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px}
+.list{display:grid;gap:10px;margin-top:18px}
+.frow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.frow .ft{flex:1;min-width:160px;font-weight:600}
+.frow small{color:var(--muted)}
+.tag{font-size:.8rem;border:1px solid var(--line);border-radius:99px;padding:0 10px;color:var(--muted)}
+.note{border:1px dashed var(--line);border-radius:10px;padding:10px 14px;color:var(--muted);font-size:.92rem;margin:0}
+.tpls{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tpls .btn{text-align:start;display:grid;gap:2px}
+.tpls small{font-weight:400;color:var(--muted)}
+
+.ehead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:18px}
+.tabs button{border:0;background:transparent;padding:9px 14px;cursor:pointer;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.stack{display:grid;gap:14px}
+.field{display:grid;gap:6px}
+.field>label,.lab{font-size:.88rem;font-weight:600;color:var(--muted)}
+.ftitle{font-size:1.35rem;font-weight:700}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.grp{display:grid;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.grp>h3{font-size:1rem}
+
+.qcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:12px}
+.qcard.sec{border-color:var(--accent);background:var(--accent-soft)}
+.qrow{display:flex;flex-wrap:wrap;gap:10px}
+.qrow .qt{flex:2 1 220px}.qrow .qty{flex:1 1 150px}
+.orow{display:flex;align-items:center;gap:6px}
+.orow input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);flex:none}
+.mk{width:14px;height:14px;border:2px solid var(--muted);flex:none;border-radius:50%}
+.mk.multi{border-radius:3px}.mk.drop,.mk.rank{border-radius:2px;border-width:0;width:auto;font-size:.85rem;color:var(--muted)}
+.opts{display:grid;gap:6px}
+.qfoot{display:flex;align-items:center;flex-wrap:wrap;gap:2px;border-top:1px solid var(--line);padding-top:8px}
+.sw{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.92rem}
+.sw input{width:18px;height:18px;accent-color:var(--accent)}
+.logic{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.9rem}
+.logic select,.logic input{width:auto;min-width:120px;flex:1 1 130px}
+.pts{width:80px!important;flex:none!important}
+.sws{display:flex;gap:8px;flex-wrap:wrap}
+.swc{width:30px;height:30px;border-radius:50%;border:3px solid var(--surface);outline:1px solid var(--line);cursor:pointer;padding:0}
+.swc[aria-pressed="true"]{outline:3px solid var(--ink)}
+.himg{display:block;width:100%;height:auto;max-height:170px;object-fit:cover;border-radius:10px}
+
+.chat{display:grid;gap:10px;max-height:46vh;overflow-y:auto}
+.msg{padding:9px 13px;border-radius:12px;max-width:88%;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.u{background:var(--accent-soft);justify-self:start}
+.msg.a{background:var(--surface);border:1px solid var(--line);justify-self:end}
+.send{display:flex;gap:8px;align-items:flex-end}
+.analysis{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--accent-soft);border-radius:10px;padding:12px 14px;line-height:1.8}
+
+.linkrow{display:flex;gap:8px;flex-wrap:wrap}
+.linkrow .in{flex:1 1 240px;direction:ltr;text-align:left}
+.qrbox{background:#fff;padding:12px;width:208px;max-width:100%;border-radius:10px;border:1px solid var(--line)} /* QR must stay black on white in both themes */
+.qrbox svg{display:block;width:100%;height:auto}
+
+.rsum{display:grid;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}
+.rsum h3{font-size:1rem}
+.bar2{display:grid;grid-template-columns:minmax(80px,1.2fr) 3fr 38px;gap:10px;align-items:center;font-size:.92rem}
+.bar2 .tr{height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar2 .fl{height:100%;background:var(--c1);border-radius:99px}
+.bar2 b{font-variant-numeric:tabular-nums;text-align:end}
+.txt{margin:0;padding-inline-start:1.2em;display:grid;gap:4px;font-size:.95rem}
+.dwrap{display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px}
+.donut{width:150px;height:150px;flex:none;transform:rotate(0deg)}
+.legend{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:.92rem;flex:1 1 180px;min-width:0}
+.legend li{display:flex;align-items:center;gap:8px;min-width:0}
+.legend i{width:12px;height:12px;border-radius:3px;flex:none}
+.legend span{flex:1;min-width:0;overflow-wrap:anywhere}
+.legend b{font-variant-numeric:tabular-nums}
+.cols{display:flex;align-items:flex-end;gap:8px;height:130px;padding-top:6px}
+.cols div{flex:1;min-width:0;display:grid;grid-template-rows:1fr auto auto;justify-items:center;height:100%;font-size:.85rem}
+.cols em{display:block;width:100%;max-width:44px;background:var(--c1);border-radius:6px 6px 0 0;align-self:end}
+.cols b{font-variant-numeric:tabular-nums}
+.gscroll{overflow-x:auto}
+.gt{border-collapse:collapse;min-width:100%;font-size:.9rem}
+.gt th,.gt td{border:1px solid var(--line);padding:6px 10px;text-align:center}
+.gt th:first-child{text-align:start}
+.gt thead th{background:var(--accent-soft);font-weight:600}
+
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:clamp(18px,4vw,34px);display:grid;gap:22px}
+.sheet h1{font-size:1.7em}
+.sheet h2{font-size:1.3em}
+.fq{display:grid;gap:10px}
+.ql{font-weight:700}
+.ql i{color:var(--danger);font-style:normal;margin-inline-start:4px}
+.qd{margin:0;color:var(--muted);font-size:.92em}
+.err{margin:0;color:var(--danger);font-size:.88em}
+.choices{display:grid;gap:8px}
+.ch{display:flex;align-items:center;gap:10px;cursor:pointer}
+.ch input{width:18px;height:18px;accent-color:var(--accent);flex:none}
+.scale{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px}
+.sn{display:flex;flex-wrap:wrap;gap:6px}
+.sc{display:grid;justify-items:center;gap:2px;cursor:pointer;min-width:34px}
+.sc input{width:18px;height:18px;accent-color:var(--accent);margin:0}
+.sl{font-size:.85em;color:var(--muted)}
+.rk{display:flex;align-items:center;gap:10px}
+.rk select{width:72px;flex:none}
+.sheet .gt input{width:18px;height:18px;accent-color:var(--accent);margin:0}
+.pg{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pgbar{flex:1;height:6px;background:var(--line);border-radius:99px;overflow:hidden;min-width:80px}
+.pgbar i{display:block;height:100%;background:var(--accent)}
+.done{text-align:center;display:grid;gap:14px;padding-block:20px}
+.score{font-size:2em;font-weight:700;color:var(--accent)}
+.wrong{text-align:start;display:grid;gap:6px;font-size:.95em}
+.fail{color:var(--danger)}
+
+@media (prefers-reduced-motion:no-preference){.btn,.tabs button{transition:border-color .15s,background .15s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="bar"></div>
+  <main id="app"></main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/logic.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,10);
+const clone=o=>JSON.parse(JSON.stringify(o));
+
+/* ---------- i18n: [ar, fr, en] ---------- */
+const LI={ar:0,fr:1,en:2};
+const LNAME={ar:'Arabic',fr:'French',en:'English'};
+const T={
+app:['صانع الاستبيانات','Créateur de formulaires','Form Builder'],
+new:['استبيان جديد','Nouveau formulaire','New form'],
+mine:['استبياناتي','Mes formulaires','My forms'],
+empty:['لا توجد استبيانات بعد. أنشئ استبيانًا يدويًا أو من قالب أو صفه للمساعد الذكي.','Aucun formulaire. Créez-en un, partez d’un modèle ou décrivez-le à l’assistant.','No forms yet. Create one by hand, from a template, or describe it to the assistant.'],
+aiHome:['صف الاستبيان وسيبنيه المساعد','Décrivez le formulaire, l’assistant le construit','Describe the form and the assistant builds it'],
+aiHomePh:['مثال: استبيان رضا زبائن مطعم من 6 أسئلة، بينها تقييم من 1 إلى 5. أو الصق وصف بحثك هنا.','Ex. : enquête de satisfaction d’un restaurant, 6 questions dont une note de 1 à 5. Ou collez la description de votre recherche.','e.g. A restaurant customer satisfaction survey, 6 questions including a 1–5 rating. Or paste your research description.'],
+attach:['أو أرفق ملفًا (txt, md, csv, docx) لبناء الاستبيان منه','Ou joignez un fichier (txt, md, csv, docx) pour le construire','Or attach a file (txt, md, csv, docx) to build the form from'],
+fileErr:['تعذرت قراءة الملف','Lecture du fichier impossible','Could not read the file'],
+build:['ابنِ الاستبيان','Construire','Build form'],
+tplTitle:['ابدأ من قالب','Partir d’un modèle','Start from a template'],
+untitled:['استبيان بلا عنوان','Formulaire sans titre','Untitled form'],
+qn:['سؤال','question(s)','questions'],
+edit:['تحرير','Modifier','Edit'],
+del:['حذف','Supprimer','Delete'],
+delSure:['تأكيد حذف الاستبيان','Confirmer la suppression','Confirm delete'],
+back:['رجوع','Retour','Back'],
+preview:['معاينة','Aperçu','Preview'],
+tabQ:['الأسئلة','Questions','Questions'],tabAI:['المساعد الذكي','Assistant IA','AI assistant'],tabShare:['المشاركة','Partage','Share'],tabResp:['الردود','Réponses','Responses'],tabSet:['الإعدادات','Réglages','Settings'],
+addq:['إضافة','Ajouter','Add'],
+t_short:['إجابة قصيرة','Réponse courte','Short answer'],t_long:['فقرة','Paragraphe','Paragraph'],t_choice:['اختيار واحد','Choix unique','Multiple choice'],t_multi:['مربعات اختيار','Cases à cocher','Checkboxes'],t_drop:['قائمة منسدلة','Liste déroulante','Dropdown'],t_scale:['مقياس خطي','Échelle linéaire','Linear scale'],t_date:['تاريخ','Date','Date'],t_time:['وقت','Heure','Time'],t_email:['بريد إلكتروني','E-mail','Email'],t_number:['رقم','Nombre','Number'],
+t_grid:['شبكة اختيار واحد','Grille à choix unique','Multiple-choice grid'],t_gridm:['شبكة مربعات اختيار','Grille à cases','Checkbox grid'],t_rank:['ترتيب الخيارات','Classement','Ranking'],t_section:['قسم جديد (صفحة)','Nouvelle section (page)','New section (page)'],
+qph:['نص السؤال','Intitulé de la question','Question text'],
+qdesc:['وصف السؤال (اختياري)','Description (facultatif)','Description (optional)'],
+secT:['عنوان القسم','Titre de la section','Section title'],secD:['وصف القسم','Description de la section','Section description'],sec:['القسم','Section','Section'],
+req:['مطلوب','Obligatoire','Required'],
+opt:['خيار','Option','Option'],addopt:['إضافة خيار','Ajouter une option','Add option'],
+row:['صف','Ligne','Row'],col:['عمود','Colonne','Column'],
+rows:['الصفوف (سطر لكل صف)','Lignes (une par ligne)','Rows (one per line)'],cols:['الأعمدة (سطر لكل عمود)','Colonnes (une par ligne)','Columns (one per line)'],
+from:['من','De','From'],to:['إلى','À','To'],lmin:['وصف الحد الأدنى','Libellé minimum','Min label'],lmax:['وصف الحد الأقصى','Libellé maximum','Max label'],
+logicL:['إظهار فقط إذا كان','Afficher seulement si','Show only if'],logicNone:['دائمًا ظاهر','Toujours affiché','Always shown'],opEq:['يساوي','est égal à','equals'],opNe:['لا يساوي','n’est pas égal à','does not equal'],
+points:['الدرجة','Points','Points'],correct:['الإجابة الصحيحة','Bonne réponse','Correct answer'],accepted:['الإجابات المقبولة (مفصولة بفاصلة)','Réponses acceptées (séparées par des virgules)','Accepted answers (comma separated)'],
+fTitle:['عنوان الاستبيان','Titre du formulaire','Form title'],fDesc:['وصف (اختياري)','Description (facultatif)','Description (optional)'],
+gGen:['عام','Général','General'],gLook:['المظهر','Apparence','Appearance'],gAccess:['الإتاحة','Accès','Access'],gQuiz:['وضع الاختبار','Mode quiz','Quiz mode'],gTools:['أدوات','Outils','Tools'],
+fLang:['لغة الاستبيان واتجاه الكتابة','Langue du formulaire','Form language'],fFont:['الخط','Police','Font'],
+accL:['لون الاستبيان','Couleur du formulaire','Form color'],hdr:['صورة الرأس','Image d’en-tête','Header image'],pick:['اختيار صورة','Choisir une image','Choose image'],remove:['إزالة','Retirer','Remove'],
+accepting:['يستقبل الردود','Accepte les réponses','Accepting responses'],
+closeAt:['إغلاق تلقائي في تاريخ','Fermeture automatique à la date','Auto-close at'],
+oneResp:['رد واحد لكل شخص مع إمكانية تعديله','Une réponse par personne, modifiable','One response per person, editable'],
+quizOn:['تفعيل الدرجات والتصحيح التلقائي','Activer notes et correction automatique','Enable points and auto grading'],
+showScore:['إظهار النتيجة للمجيب بعد الإرسال','Afficher la note au répondant','Show the score to the respondent'],
+quizHint:['حدد الإجابة الصحيحة والدرجة داخل كل سؤال (اختيار واحد، مربعات اختيار، قائمة، إجابة قصيرة).','Définissez la bonne réponse et les points dans chaque question (choix, cases, liste, réponse courte).','Set the correct answer and points inside each question (choice, checkboxes, dropdown, short answer).'],
+confirm:['رسالة بعد الإرسال','Message après envoi','Confirmation message'],
+confirmDef:['تم تسجيل إجابتك. شكرًا لك.','Votre réponse a été enregistrée. Merci.','Your response was recorded. Thank you.'],
+trLabel:['ترجمة الاستبيان كاملًا إلى','Traduire tout le formulaire en','Translate the whole form to'],trBtn:['ترجمة','Traduire','Translate'],
+link:['رابط الاستبيان','Lien du formulaire','Form link'],
+linkHelp:['يفتح الاستبيان أي شخص يملك الرابط. للمشاركة يلزم أن يكون مسجّلًا الدخول وأن تسمح مشاركة الصفحة بصلاحية «مساهم». إن اختلف العنوان عن رابط صفحتك المنشورة فعدّله هنا.','Toute personne ayant le lien ouvre le formulaire. Pour répondre, il faut être connecté et que le partage de la page donne le niveau « Contributeur ». Si l’adresse diffère de celle de votre page publiée, modifiez-la.','Anyone with the link can open the form. To respond they must be signed in and the page must be shared at the Contributor level. If the address differs from your published page link, edit it here.'],
+copy:['نسخ الرابط','Copier le lien','Copy link'],copied:['تم النسخ','Copié','Copied'],
+qr:['رمز QR','Code QR','QR code'],dlQr:['حفظ الرمز','Enregistrer le code','Save QR'],
+docx:['تصدير الاستبيان إلى Word (للطباعة والإرفاق)','Exporter le formulaire en Word (impression)','Export the form to Word (for print)'],
+saved:['تم الحفظ','Enregistré','Saved'],saving:['جارٍ الحفظ…','Enregistrement…','Saving…'],saveErr:['تعذر الحفظ','Échec de l’enregistrement','Could not save'],
+respN:['رد','réponse(s)','responses'],
+refresh:['تحديث','Actualiser','Refresh'],csv:['CSV','CSV','CSV'],xlsx:['Excel','Excel','Excel'],
+noResp:['لا توجد ردود بعد.','Aucune réponse pour le moment.','No responses yet.'],
+avgScore:['متوسط الدرجات','Note moyenne','Average score'],avg:['المتوسط','Moyenne','Average'],avgRank:['متوسط الترتيب (الأقل أفضل)','Rang moyen (plus bas = mieux)','Average rank (lower is better)'],
+analyze:['حلّل النتائج بالذكاء الاصطناعي','Analyser avec l’IA','Analyze with AI'],analysisT:['تحليل الذكاء الاصطناعي','Analyse IA','AI analysis'],
+loading:['جارٍ التحميل…','Chargement…','Loading…'],
+loadSlow:['يتأخر الاتصال بالتخزين، قد تكون القائمة غير محدّثة.','Connexion lente au stockage, la liste peut être obsolète.','Storage is slow to answer; the list may be out of date.'],
+submit:['إرسال','Envoyer','Submit'],next:['التالي','Suivant','Next'],prev:['السابق','Précédent','Previous'],pageOf:['صفحة','Page','Page'],of:['من','sur','of'],
+needed:['هذا السؤال مطلوب','Question obligatoire','This question is required'],
+rankErr:['رتّب كل الخيارات دون تكرار الرقم','Classez toutes les options sans doublon','Rank every option with no repeated number'],
+another:['إرسال رد آخر','Envoyer une autre réponse','Submit another response'],
+closed:['هذا الاستبيان لا يستقبل الردود حاليًا.','Ce formulaire n’accepte plus de réponses.','This form is not accepting responses.'],
+closedAuto:['انتهى موعد استقبال الردود.','La période de réponse est terminée.','The response period has ended.'],
+editing:['لديك رد سابق. يمكنك تعديله ثم إرساله من جديد.','Vous avez déjà répondu. Vous pouvez modifier votre réponse.','You already responded. You can edit your answer and resubmit.'],
+previewNote:['وضع المعاينة: لن يُحفظ أي رد.','Mode aperçu : aucune réponse n’est enregistrée.','Preview mode: responses are not saved.'],
+yourScore:['نتيجتك','Votre note','Your score'],wrongList:['الإجابات الصحيحة للأسئلة التي أخطأت فيها','Bonnes réponses aux questions manquées','Correct answers to the questions you missed'],
+submitFail:['تعذر إرسال الرد. تأكد من تسجيل الدخول وأن لديك صلاحية المشاركة في الصفحة ثم أعد المحاولة.','Envoi impossible. Vérifiez que vous êtes connecté avec le droit de participer, puis réessayez.','Could not submit. Make sure you are signed in with permission to participate, then try again.'],
+notFound:['الاستبيان غير موجود أو لا تملك صلاحية الوصول إليه.','Formulaire introuvable ou accès refusé.','Form not found or you do not have access.'],
+noEdit:['إنشاء الاستبيانات متاح لمالك الصفحة والمحررين فقط. افتح رابط استبيان للمشاركة فيه.','La création est réservée au propriétaire et aux éditeurs. Ouvrez un lien de formulaire pour y répondre.','Only the page owner and editors can create forms. Open a form link to respond.'],
+localNote:['التخزين المشترك غير متاح هنا، فالاستبيانات تُحفظ في هذا المتصفح فقط ولا تصل إلى الآخرين.','Le stockage partagé est indisponible : les formulaires restent dans ce navigateur.','Shared storage is unavailable here: forms stay in this browser only.'],
+aiHint:['اطلب من المساعد إضافة أسئلة أو أقسام أو منطق انتقال أو درجات، أو تعديل أي شيء أو حذفه.','Demandez d’ajouter questions, sections, logique ou notes, ou de tout modifier.','Ask the assistant to add questions, sections, logic or points, or to edit or remove anything.'],
+aiPh:['اكتب طلبك…','Votre demande…','Your request…'],
+send:['إرسال','Envoyer','Send'],thinking:['يفكر…','Réflexion…','Thinking…'],
+aiOff:['المساعد غير متاح في هذا العرض.','L’assistant n’est pas disponible ici.','The assistant is unavailable in this view.'],
+aiErr:['تعذر تنفيذ الطلب. جرّب صياغة أخرى.','La demande a échoué. Reformulez.','The request failed. Try rephrasing.'],
+choose:['اختر…','Choisir…','Select…'],
+theme:['تبديل الوضع الليلي/النهاري','Basculer clair/sombre','Toggle light/dark'],
+dup:['تكرار','Dupliquer','Duplicate'],up:['أعلى','Monter','Move up'],down:['أسفل','Descendre','Move down'],
+when:['التاريخ','Date','Date'],score:['الدرجة','Note','Score'],
+tpl1:['رضا العملاء','Satisfaction client','Customer satisfaction'],tpl1d:['تقييم ومنطق انتقال','Note et logique','Rating and logic'],
+tpl2:['بحث جامعي','Recherche universitaire','University research'],tpl2d:['أقسام وشبكة ليكرت','Sections et grille Likert','Sections and Likert grid'],
+tpl3:['مقياس ليكرت','Échelle de Likert','Likert scale'],tpl3d:['5 مستويات موافقة','5 niveaux d’accord','5 agreement levels'],
+tpl4:['موافقة مستنيرة','Consentement éclairé','Informed consent'],tpl4d:['نموذج موافقة مشارك','Accord du participant','Participant agreement'],
+tpl5:['اختبار قصير','Quiz court','Short quiz'],tpl5d:['درجات وتصحيح تلقائي','Notes et correction auto','Points and auto grading']
+};
+Object.assign(T,{
+authIntro:['سجّل الدخول لإنشاء استبياناتك وإدارتها. المجيبون لا يحتاجون إلى حساب.','Connectez-vous pour créer et gérer vos formulaires. Les répondants n’ont pas besoin de compte.','Sign in to create and manage your forms. Respondents do not need an account.'],
+email:['البريد الإلكتروني','E-mail','Email'],password:['كلمة المرور (8 أحرف على الأقل)','Mot de passe (8 caractères min.)','Password (8 characters min.)'],
+signin:['دخول','Connexion','Sign in'],signup:['إنشاء حساب','Créer un compte','Sign up'],signout:['خروج','Déconnexion','Sign out'],
+confirmMail:['تم إنشاء الحساب. افتح رسالة التأكيد في بريدك ثم ادخل.','Compte créé. Confirmez via l’e-mail reçu, puis connectez-vous.','Account created. Confirm via the email we sent, then sign in.'],
+authNeed:['أدخل البريد وكلمة المرور','Saisissez e-mail et mot de passe','Enter email and password'],
+setup:['الموقع غير مُهيّأ بعد: أضف متغيرات Supabase في إعدادات الاستضافة (راجع README).','Site non configuré : ajoutez les variables Supabase (voir README).','The site is not configured yet: add the Supabase variables in your hosting settings (see README).'],
+maxResp:['أقصى عدد للردود (0 = بلا حد)','Nombre max de réponses (0 = illimité)','Maximum responses (0 = unlimited)']
+});
+const t=(k,lg)=>{const a=T[k];return a?a[LI[lg||S.ui]]:k};
+const Lx=(lg,a,f,e)=>[a,f,e][LI[lg]];
+
+const FONTS={
+  cairo:{n:'Cairo',css:"'Cairo',system-ui,sans-serif",z:1},
+  tnr:{n:'Times New Roman',css:"'Times New Roman',Times,serif",z:1.05},
+  majalla:{n:'Sakkal Majalla',css:"'Sakkal Majalla','Majalla','Amiri','Times New Roman',serif",z:1.2},
+  trad:{n:'Arabic Traditional',css:"'Traditional Arabic','Amiri','Times New Roman',serif",z:1.2}
+};
+const ACC={teal:['#0B7A75','#FFFFFF'],blue:['#1F5FBF','#FFFFFF'],purple:['#6B46C1','#FFFFFF'],green:['#2E7D32','#FFFFFF'],orange:['#B85C00','#FFFFFF'],rose:['#B4234F','#FFFFFF']};
+const TYPES=['short','long','choice','multi','drop','scale','grid','gridm','rank','date','time','email','number','section'];
+const {OPTT,LOGSRC,QUIZT,rowsOf,colsOf,pagesOf,condOk,effective,emptyV,complete,gradeQ,gradeAll}=window.SVLogic;
+
+/* ---------- state ---------- */
+const S={session:null,setupErr:false,authMsg:'',ui:'ar',forms:[],cur:null,route:{type:'home'},tab:'q',canEdit:false,local:false,ready:false,
+  status:'',ai:{turns:[],busy:false,err:''},homeAi:{busy:false,err:''},homeFile:null,resp:null,fill:{},fillForm:null,link:'',delArm:false,loadNote:false,trBusy:false,trErr:''};
+let store=null,SB=null,CFG={};
+/* المساعد الذكي: يمر عبر الخادم الذي يحمل مفتاح API ويتحقق من تسجيل دخولك */
+const SAMPLE=async function(input,opts){
+  const prompt=typeof input==='string'?input:input.map(x=>x.role+': '+x.content).join('\n');
+  let r;
+  try{r=await fetch('/api/ai',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+(S.session?S.session.access_token:'')},body:JSON.stringify({prompt:prompt})})}
+  catch(e){throw {code:'upstream_error',message:'network'}}
+  if(!r.ok)throw {code:r.status===401||r.status===501?'not_granted':r.status===429?'rate_limited':'upstream_error',message:'ai'};
+  const j=await r.json();
+  if(opts&&opts.onText)opts.onText({text:j.text,delta:j.text});
+  return{text:j.text,truncated:false};
+};
+SAMPLE.json=async function(input,opts){
+  const out=await SAMPLE(input,opts),text=out.text;
+  const cand=[text];
+  const fence=/```(?:json)?\s*([\s\S]*?)```/.exec(text);if(fence)cand.push(fence[1]);
+  const a=text.search(/[\{\[]/),b=Math.max(text.lastIndexOf('}'),text.lastIndexOf(']'));
+  if(a>=0&&b>a)cand.push(text.slice(a,b+1));
+  for(const c of cand){try{return JSON.parse(c)}catch(e){}}
+  throw {code:'invalid_json',message:'json',text:text};
+};
+const use=async n=>{if(n==='sample')return(CFG.ai&&S.session)?SAMPLE:null;return null};
+
+/* ---------- stores ---------- */
+/* المالك: جداول Supabase المحمية بسياسات RLS */
+function ownerStore(){
+  let list=[],cb=()=>{};
+  const row=r=>Object.assign({},r.data,{id:r.id});
+  return{
+    newId:()=>crypto.randomUUID(),
+    async watch(f){
+      cb=f;
+      const {data,error}=await SB.from('forms').select('id,data').order('created_at',{ascending:false});
+      if(error){S.loadNote=true;render();return}
+      S.loadNote=false;list=data.map(row);cb(list);
+    },
+    async get(id){const {data}=await SB.from('forms').select('id,data').eq('id',id).maybeSingle();return data?row(data):null},
+    async save(f){
+      const o=clone(f);delete o.id;
+      const {error}=await SB.from('forms').upsert({id:f.id,owner:S.session.user.id,title:f.title||'',data:o,updated_at:new Date().toISOString()});
+      if(error)throw error;
+      const i=list.findIndex(x=>x.id===f.id),n=clone(f);if(i<0)list.push(n);else list[i]=n;cb(list);
+    },
+    async remove(id){const {error}=await SB.from('forms').delete().eq('id',id);if(error)throw error;list=list.filter(x=>x.id!==id);cb(list)},
+    async responses(fid){
+      const {data,error}=await SB.from('responses').select('answers,score,max,created_at').eq('form_id',fid).order('created_at',{ascending:false}).limit(5000);
+      if(error)throw error;
+      return data.map(r=>({answers:r.answers,score:r.score==null?undefined:Number(r.score),max:r.max==null?undefined:Number(r.max),at:Date.parse(r.created_at)}));
+    }
+  };
+}
+/* المجيب: عبر واجهات الخادم، دون حساب */
+function publicStore(){
+  const tok=()=>{try{let t=localStorage.getItem('sv_tok');if(!t){t=crypto.randomUUID();localStorage.setItem('sv_tok',t)}return t}catch(e){return null}};
+  return{
+    async get(id){const r=await fetch('/api/forms/'+encodeURIComponent(id));if(!r.ok)return null;return r.json()},
+    async mine(fid){const t=tok();if(!t)return null;try{const r=await fetch('/api/forms/'+encodeURIComponent(fid)+'/mine?token='+encodeURIComponent(t));if(!r.ok)return null;return (await r.json()).response}catch(e){return null}},
+    async submit(fid,payload){
+      const r=await fetch('/api/submit',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({formId:fid,answers:payload.answers,token:tok()})});
+      if(!r.ok){const e=new Error('submit');e.status=r.status;throw e}
+      return r.json();
+    }
+  };
+}
+
+/* ---------- model helpers ---------- */
+const blank=lg=>({title:'',desc:'',lang:lg,font:'cairo',accepting:true,confirm:'',questions:[],createdAt:Date.now(),
+  accent:'teal',header:'',closeAt:'',maxResponses:0,oneResp:false,quiz:false,showScore:true});
+function mkQ(type,lg){
+  const q={id:uid(),type:type,title:'',desc:'',required:false,options:[],min:1,max:5,minLabel:'',maxLabel:'',rows:[],cols:[],showIf:null,points:1,correct:[],correctText:''};
+  if(OPTT.has(type)) q.options=[t('opt',lg)+' 1',t('opt',lg)+' 2'];
+  if(type==='grid'||type==='gridm'){q.rows=[t('row',lg)+' 1',t('row',lg)+' 2'];q.cols=[t('col',lg)+' 1',t('col',lg)+' 2',t('col',lg)+' 3']}
+  if(type==='section') q.title=t('sec',lg);
+  return q;
+}
+const idxOf=(f,id)=>f.questions.findIndex(x=>x.id===id);
+const slim=f=>({title:f.title,description:f.desc,lang:f.lang,confirm:f.confirm,quiz:!!f.quiz,
+  questions:f.questions.map(q=>{
+    const o={type:q.type,title:q.title,description:q.desc,required:q.required,options:q.options,min:q.min,max:q.max,minLabel:q.minLabel,maxLabel:q.maxLabel,rows:rowsOf(q),cols:colsOf(q),points:q.points,correct:q.correct,correctText:q.correctText};
+    if(q.showIf){const i=idxOf(f,q.showIf.q);if(i>=0)o.showIf={q:i+1,op:q.showIf.op,vi:q.showIf.vi,v:q.showIf.v}}
+    return o;
+  })});
+function applyAI(f,r){
+  const n=r&&r.form; if(!n||!Array.isArray(n.questions)) return false;
+  if(typeof n.title==='string') f.title=n.title;
+  if(typeof n.description==='string') f.desc=n.description;
+  if(LI[n.lang]!==undefined) f.lang=n.lang;
+  if(typeof n.confirm==='string') f.confirm=n.confirm;
+  if(typeof n.quiz==='boolean') f.quiz=n.quiz;
+  const old=f.questions;
+  const src=n.questions.filter(q=>q&&TYPES.indexOf(q.type)>=0);
+  const built=src.map(q=>{
+    const m=old.find(o=>o.title===q.title&&o.type===q.type);
+    const b=mkQ(q.type,f.lang);
+    if(m) b.id=m.id;
+    b.title=String(q.title||(q.type==='section'?t('sec',f.lang):''));
+    b.desc=String(q.description||'');
+    b.required=!!q.required&&q.type!=='section';
+    if(OPTT.has(q.type)&&Array.isArray(q.options)&&q.options.length) b.options=q.options.map(String);
+    if(q.type==='scale'){b.min=q.min===0?0:1;b.max=Math.min(10,Math.max(2,Number(q.max)||5));b.minLabel=String(q.minLabel||'');b.maxLabel=String(q.maxLabel||'')}
+    if(q.type==='grid'||q.type==='gridm'){if(Array.isArray(q.rows)&&q.rows.length)b.rows=q.rows.map(String);if(Array.isArray(q.cols)&&q.cols.length)b.cols=q.cols.map(String)}
+    b.points=Math.max(0,Number(q.points)||1);
+    b.correct=Array.isArray(q.correct)?q.correct.map(Number).filter(i=>i>=0&&i<b.options.length):[];
+    b.correctText=String(q.correctText||'');
+    return b;
+  });
+  built.forEach((b,i)=>{
+    const s=src[i].showIf;
+    if(s&&s.q>=1&&s.q<=i){const sq=built[s.q-1];
+      if(LOGSRC.has(sq.type)) b.showIf={q:sq.id,op:s.op==='ne'?'ne':'eq',vi:OPTT.has(sq.type)?Math.max(0,Number(s.vi)||0):undefined,v:s.v!=null?String(s.v):''};
+    }
+  });
+  f.questions=built;
+  return true;
+}
+function applyTranslation(f,r){
+  const n=r&&r.form; if(!n||!Array.isArray(n.questions)||n.questions.length!==f.questions.length) return false;
+  if(typeof n.title==='string') f.title=n.title;
+  if(typeof n.description==='string') f.desc=n.description;
+  if(typeof n.confirm==='string') f.confirm=n.confirm;
+  if(LI[n.lang]!==undefined) f.lang=n.lang;
+  f.questions.forEach((q,i)=>{
+    const s=n.questions[i]||{};
+    if(typeof s.title==='string') q.title=s.title;
+    if(typeof s.description==='string') q.desc=s.description;
+    if(Array.isArray(s.options)&&s.options.length===q.options.length) q.options=s.options.map(String);
+    if(Array.isArray(s.rows)&&s.rows.length===rowsOf(q).length) q.rows=s.rows.map(String);
+    if(Array.isArray(s.cols)&&s.cols.length===colsOf(q).length) q.cols=s.cols.map(String);
+    if(typeof s.minLabel==='string') q.minLabel=s.minLabel;
+    if(typeof s.maxLabel==='string') q.maxLabel=s.maxLabel;
+    if(typeof s.correctText==='string'&&q.correctText) q.correctText=s.correctText;
+  });
+  return true;
+}
+const SYS='You build survey forms like Google Forms. You receive the current form as JSON and a user request. Reply with ONLY one JSON object: {"reply": "<one or two short sentences in the user\'s language saying what you did>", "form": <the complete updated form object, or null if nothing should change>}. '+
+'Form object: {"title":string,"description":string,"lang":"ar"|"fr"|"en","confirm":string,"quiz":boolean,"questions":[ITEM]}. ITEM: {"type":"short|long|choice|multi|drop|scale|grid|gridm|rank|date|time|email|number|section","title":string,"description":string,"required":boolean,"options":[string] (choice, multi, drop, rank),"min":0|1,"max":2-10,"minLabel":string,"maxLabel":string (scale),"rows":[string],"cols":[string] (grid, gridm: rows are statements, cols are answer levels),"points":number,"correct":[0-based option indexes] (quiz: choice, multi, drop),"correctText":string (quiz: short, accepted answers separated by commas),"showIf":{"q":<1-based index of an EARLIER item of type choice, drop, multi, scale or short>,"op":"eq"|"ne","vi":<0-based option index for choice/drop/multi>,"v":<text for scale or short>}}. '+
+'A "section" item starts a new page (title and description); use sections for long forms and academic questionnaires. Use a "grid" for Likert statements. Write all text in the form language "lang" (set it to the language the user asks for, otherwise keep it). Keep existing items unless the user asks to change them. Only set quiz fields when the user wants a quiz. Use realistic, well-written questions.';
+async function askAI(msg,form,extra){
+  const sample=await use('sample'); if(!sample) throw {code:'off'};
+  let hist='';
+  S.ai.turns.slice(-6).forEach(x=>{hist+=(x.r==='u'?'USER: ':'ASSISTANT: ')+x.text+'\n'});
+  const prompt=SYS+'\n\nCURRENT FORM:\n'+JSON.stringify(slim(form))+(hist?'\n\nEARLIER MESSAGES:\n'+hist:'')+(extra?'\n\nSOURCE DOCUMENT (build the form from it):\n'+extra.slice(0,30000):'')+'\n\nUSER REQUEST:\n'+msg;
+  return sample.json(prompt,{cache:false});
+}
+
+/* ---------- saving ---------- */
+let saveTimer=null,saving=false,dirty=false;
+function touch(){S.status='saving';updStatus();clearTimeout(saveTimer);saveTimer=setTimeout(flush,700)}
+async function flush(){
+  clearTimeout(saveTimer);
+  if(!S.cur) return;
+  if(saving){dirty=true;return}
+  saving=true;
+  try{await store.save(S.cur);S.status='saved'}catch(e){S.status='err'}
+  saving=false;updStatus();
+  if(dirty){dirty=false;touch()}
+}
+function updStatus(){const el=$('#status');if(el)el.textContent=S.status==='saving'?t('saving'):S.status==='saved'?t('saved'):S.status==='err'?t('saveErr'):''}
+
+/* ---------- templates ---------- */
+function Q(lg,type,title,extra){const q=mkQ(type,lg);q.title=title;return Object.assign(q,extra||{})}
+const TPLS=[
+ {k:'tpl1',make:lg=>{const f=blank(lg);
+  f.title=Lx(lg,'استبيان رضا العملاء','Enquête de satisfaction client','Customer satisfaction survey');
+  f.desc=Lx(lg,'نقدّر وقتك. يستغرق الاستبيان دقيقتين.','Merci de votre temps. Deux minutes suffisent.','Thank you for your time. It takes two minutes.');
+  const rec=Q(lg,'choice',Lx(lg,'هل توصي بنا لأصدقائك؟','Nous recommanderiez-vous ?','Would you recommend us?'),{required:true,options:Lx(lg,['نعم','لا'],['Oui','Non'],['Yes','No'])});
+  const why=Q(lg,'long',Lx(lg,'ما الذي يمكننا تحسينه؟','Que pouvons-nous améliorer ?','What can we improve?'));
+  why.showIf={q:rec.id,op:'eq',vi:1,v:''};
+  f.questions=[
+   Q(lg,'scale',Lx(lg,'ما مدى رضاك العام عن خدماتنا؟','Quel est votre niveau de satisfaction global ?','How satisfied are you overall?'),{required:true,min:1,max:5,minLabel:Lx(lg,'غير راضٍ','Pas satisfait','Not satisfied'),maxLabel:Lx(lg,'راضٍ جدًا','Très satisfait','Very satisfied')}),
+   Q(lg,'grid',Lx(lg,'قيّم الجوانب التالية','Évaluez les aspects suivants','Rate the following'),{rows:Lx(lg,['جودة الخدمة','النظافة','السعر'],['Qualité du service','Propreté','Prix'],['Service quality','Cleanliness','Price']),cols:Lx(lg,['ضعيف','مقبول','جيد','ممتاز'],['Faible','Moyen','Bon','Excellent'],['Poor','Fair','Good','Excellent'])}),
+   rec,why,
+   Q(lg,'long',Lx(lg,'أي ملاحظات إضافية؟','Autres remarques ?','Any other comments?'))];
+  return f}},
+ {k:'tpl2',make:lg=>{const f=blank(lg);
+  f.title=Lx(lg,'استبيان بحث جامعي','Questionnaire de recherche universitaire','University research questionnaire');
+  f.desc=Lx(lg,'هذا الاستبيان لأغراض البحث العلمي فقط، وبياناتك سرّية.','Ce questionnaire sert uniquement à la recherche ; vos données sont confidentielles.','This questionnaire is for academic research only; your data is confidential.');
+  f.questions=[
+   Q(lg,'section',Lx(lg,'القسم الأول: البيانات الشخصية','Partie 1 : Données personnelles','Part 1: Personal data'),{}),
+   Q(lg,'choice',Lx(lg,'الجنس','Sexe','Gender'),{required:true,options:Lx(lg,['ذكر','أنثى'],['Homme','Femme'],['Male','Female'])}),
+   Q(lg,'choice',Lx(lg,'الفئة العمرية','Tranche d’âge','Age group'),{required:true,options:Lx(lg,['أقل من 25','25 - 35','36 - 45','أكثر من 45'],['Moins de 25','25 - 35','36 - 45','Plus de 45'],['Under 25','25 - 35','36 - 45','Over 45'])}),
+   Q(lg,'drop',Lx(lg,'المستوى التعليمي','Niveau d’études','Education level'),{required:true,options:Lx(lg,['ثانوي','ليسانس','ماستر','دكتوراه'],['Lycée','Licence','Master','Doctorat'],['High school','Bachelor','Master','PhD'])}),
+   Q(lg,'section',Lx(lg,'القسم الثاني: محاور الدراسة','Partie 2 : Axes de l’étude','Part 2: Study dimensions'),{desc:Lx(lg,'حدد مدى موافقتك على كل عبارة.','Indiquez votre degré d’accord avec chaque énoncé.','Indicate how much you agree with each statement.')}),
+   Q(lg,'grid',Lx(lg,'العبارات','Énoncés','Statements'),{required:true,rows:Lx(lg,['العبارة الأولى','العبارة الثانية','العبارة الثالثة','العبارة الرابعة'],['Énoncé 1','Énoncé 2','Énoncé 3','Énoncé 4'],['Statement 1','Statement 2','Statement 3','Statement 4']),cols:Lx(lg,['أوافق بشدة','أوافق','محايد','لا أوافق','لا أوافق بشدة'],['Tout à fait d’accord','D’accord','Neutre','Pas d’accord','Pas du tout d’accord'],['Strongly agree','Agree','Neutral','Disagree','Strongly disagree'])}),
+   Q(lg,'long',Lx(lg,'ملاحظات واقتراحات','Remarques et suggestions','Comments and suggestions'))];
+  return f}},
+ {k:'tpl3',make:lg=>{const f=blank(lg);
+  f.title=Lx(lg,'مقياس ليكرت الخماسي','Échelle de Likert à 5 points','5-point Likert scale');
+  f.desc=Lx(lg,'اختر الإجابة الأقرب إلى رأيك في كل عبارة.','Choisissez la réponse la plus proche de votre avis.','Choose the answer closest to your opinion for each statement.');
+  f.questions=[Q(lg,'grid',Lx(lg,'مدى الموافقة','Degré d’accord','Level of agreement'),{required:true,
+   rows:Lx(lg,['العبارة الأولى','العبارة الثانية','العبارة الثالثة','العبارة الرابعة','العبارة الخامسة','العبارة السادسة'],['Énoncé 1','Énoncé 2','Énoncé 3','Énoncé 4','Énoncé 5','Énoncé 6'],['Statement 1','Statement 2','Statement 3','Statement 4','Statement 5','Statement 6']),
+   cols:Lx(lg,['أوافق بشدة','أوافق','محايد','لا أوافق','لا أوافق بشدة'],['Tout à fait d’accord','D’accord','Neutre','Pas d’accord','Pas du tout d’accord'],['Strongly agree','Agree','Neutral','Disagree','Strongly disagree'])})];
+  return f}},
+ {k:'tpl4',make:lg=>{const f=blank(lg);
+  f.title=Lx(lg,'نموذج موافقة مستنيرة','Formulaire de consentement éclairé','Informed consent form');
+  f.desc=Lx(lg,'عنوان الدراسة: ...\nهدف الدراسة: ...\nالمشاركة طوعية ويمكنك الانسحاب في أي وقت، ولن تُستخدم بياناتك إلا لأغراض البحث العلمي.','Titre de l’étude : ...\nObjectif : ...\nLa participation est volontaire ; vous pouvez vous retirer à tout moment. Vos données servent uniquement à la recherche.','Study title: ...\nPurpose: ...\nParticipation is voluntary and you may withdraw at any time. Your data is used for research only.');
+  f.questions=[
+   Q(lg,'choice',Lx(lg,'هل قرأت المعلومات أعلاه وتوافق على المشاركة؟','Avez-vous lu les informations et acceptez-vous de participer ?','Have you read the information above and agree to take part?'),{required:true,options:Lx(lg,['أوافق','لا أوافق'],['J’accepte','Je refuse'],['I agree','I do not agree'])}),
+   Q(lg,'short',Lx(lg,'الاسم (اختياري)','Nom (facultatif)','Name (optional)')),
+   Q(lg,'date',Lx(lg,'التاريخ','Date','Date'),{required:true})];
+  return f}},
+ {k:'tpl5',make:lg=>{const f=blank(lg);
+  f.title=Lx(lg,'اختبار قصير','Quiz court','Short quiz');f.quiz=true;
+  f.desc=Lx(lg,'أجب عن الأسئلة التالية. تظهر نتيجتك بعد الإرسال.','Répondez aux questions. Votre note s’affiche après l’envoi.','Answer the questions below. Your score appears after you submit.');
+  f.questions=[
+   Q(lg,'choice',Lx(lg,'ما عاصمة الجزائر؟','Quelle est la capitale de l’Algérie ?','What is the capital of Algeria?'),{required:true,options:Lx(lg,['الجزائر','وهران','قسنطينة'],['Alger','Oran','Constantine'],['Algiers','Oran','Constantine']),correct:[0],points:1}),
+   Q(lg,'multi',Lx(lg,'اختر الأعداد الزوجية','Choisissez les nombres pairs','Select the even numbers'),{options:['2','3','4','7'],correct:[0,2],points:2}),
+   Q(lg,'short',Lx(lg,'كم يساوي 6 × 7؟','Combien font 6 × 7 ?','What is 6 × 7?'),{correctText:'42',points:1})];
+  return f}}
+];
+
+/* ---------- views ---------- */
+function barHtml(){
+  const fill=S.route.type==='fill';
+  return `<div class="bar"><span class="brand">${esc(fill&&S.fillForm?S.fillForm.title||t('untitled',S.fillForm.lang):t('app'))}</span>`+
+  (fill?'':`<div class="seg" role="group">${['ar','fr','en'].map(l=>`<button data-act="lang" data-v="${l}" aria-pressed="${S.ui===l}">${l==='ar'?'ع':l.toUpperCase()}</button>`).join('')}</div>`)+
+  (S.session&&!fill?`<button class="btn sm" data-act="signout">${t('signout')}</button>`:'')+
+  `<button class="ib" data-act="theme" aria-label="${esc(t('theme'))}" title="${esc(t('theme'))}">◐</button></div>`;
+}
+function viewHome(){
+  if(!S.ready) return `<p class="muted">${t('loading')}</p>`;
+  const list=S.forms.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  return `<div class="stack">
+  ${S.local?`<p class="note">${t('localNote')}</p>`:''}
+  <section class="hero"><h1>${t('aiHome')}</h1>
+    <textarea class="in" id="hai" rows="3" placeholder="${esc(t('aiHomePh'))}"></textarea>
+    <div class="field"><label for="hfile">${t('attach')}</label><input class="in" type="file" id="hfile" accept=".txt,.md,.csv,.json,.docx">${S.homeFile?`<small class="muted">${esc(S.homeFile.name)}</small>`:''}</div>
+    <div class="qfoot" style="border:0;padding:0;gap:8px"><button class="btn primary" data-act="aihome"${S.homeAi.busy?' disabled':''}>${S.homeAi.busy?t('thinking'):t('build')}</button><button class="btn" data-act="new">${t('new')}</button></div>
+    ${S.homeAi.err?`<p class="err">${esc(S.homeAi.err)}</p>`:''}
+  </section>
+  <h2>${t('tplTitle')}</h2>
+  <div class="tpls">${TPLS.map((p,i)=>`<button class="btn" data-act="tpl" data-v="${i}">${t(p.k)}<small>${t(p.k+'d')}</small></button>`).join('')}</div>
+  <h2>${t('mine')}</h2>
+  ${S.loadNote?`<p class="note">${t('loadSlow')}</p>`:''}
+  <div class="list" style="margin:0">${list.length?list.map(f=>`<div class="frow"><span class="ft">${esc(f.title||t('untitled'))}<br><small>${(f.questions||[]).filter(q=>q.type!=='section').length} ${t('qn')}</small></span><span class="tag">${f.lang==='ar'?'ع':String(f.lang).toUpperCase()}</span><button class="btn sm" data-act="open" data-id="${esc(f.id)}">${t('edit')}</button></div>`).join(''):`<p class="muted">${t('empty')}</p>`}</div></div>`;
+}
+function viewNoEdit(){
+  if(S.setupErr)return `<p class="note">${t('setup')}</p>`;
+  return `<section class="panel" style="max-width:420px;margin-inline:auto"><h1>${t('app')}</h1><p class="muted" style="margin:0">${t('authIntro')}</p>
+  <div class="field"><label for="em">${t('email')}</label><input class="in" id="em" type="email" dir="ltr" autocomplete="email"></div>
+  <div class="field"><label for="pw">${t('password')}</label><input class="in" id="pw" type="password" dir="ltr" autocomplete="current-password"></div>
+  <p class="err" id="authmsg" hidden></p>
+  <div class="qrow"><button class="btn primary" data-act="signin">${t('signin')}</button><button class="btn" data-act="signup">${t('signup')}</button></div></section>`;
+}
+
+function logicHtml(q,i){
+  const f=S.cur;
+  const srcs=f.questions.slice(0,i).filter(x=>LOGSRC.has(x.type));
+  if(!srcs.length)return '';
+  const c=q.showIf,src=c?f.questions.find(x=>x.id===c.q):null;
+  let val='';
+  if(src){
+    if(OPTT.has(src.type))val=`<select class="in" data-q="lv">${src.options.map((o,j)=>`<option value="${j}"${c.vi===j?' selected':''}>${esc(o)}</option>`).join('')}</select>`;
+    else if(src.type==='scale'){let o='';for(let v=src.min;v<=src.max;v++)o+=`<option${String(c.v)===String(v)?' selected':''}>${v}</option>`;val=`<select class="in" data-q="lv">${o}</select>`}
+    else val=`<input class="in" data-q="lv" value="${esc(c.v||'')}">`;
+  }
+  return `<div class="logic"><span class="muted">${t('logicL')}</span>
+  <select class="in" data-q="lq" aria-label="${esc(t('logicL'))}"><option value="">${t('logicNone')}</option>${srcs.map(s=>`<option value="${s.id}"${c&&c.q===s.id?' selected':''}>${esc(s.title||'—')}</option>`).join('')}</select>
+  ${src?`<select class="in" data-q="lop"><option value="eq"${c.op!=='ne'?' selected':''}>${t('opEq')}</option><option value="ne"${c.op==='ne'?' selected':''}>${t('opNe')}</option></select>${val}`:''}</div>`;
+}
+function qCard(q,i,n){
+  const f=S.cur,sc=q.type==='scale',grid=q.type==='grid'||q.type==='gridm',quiz=f.quiz&&QUIZT.has(q.type);
+  const foot=`<div class="qfoot">${q.type==='section'?'':`<label class="sw"><input type="checkbox" data-q="req"${q.required?' checked':''}>${t('req')}</label>`}<span class="grow"></span>
+  <button class="ib" data-act="qup" data-i="${i}" aria-label="${esc(t('up'))}"${i===0?' disabled':''}>↑</button>
+  <button class="ib" data-act="qdn" data-i="${i}" aria-label="${esc(t('down'))}"${i===n-1?' disabled':''}>↓</button>
+  <button class="btn sm" data-act="qdup" data-i="${i}">${t('dup')}</button>
+  <button class="ib" data-act="qdel" data-i="${i}" aria-label="${esc(t('del'))}">🗑</button></div>`;
+  if(q.type==='section')return `<section class="qcard sec" data-i="${i}">
+  <div class="qrow"><input class="in qt" data-q="title" value="${esc(q.title)}" placeholder="${esc(t('secT'))}" aria-label="${esc(t('secT'))}"><span class="tag">${t('t_section')}</span></div>
+  <textarea class="in" data-q="desc" rows="2" placeholder="${esc(t('secD'))}" aria-label="${esc(t('secD'))}">${esc(q.desc)}</textarea>${logicHtml(q,i)}${foot}</section>`;
+  return `<section class="qcard" data-i="${i}">
+  <div class="qrow"><input class="in qt" data-q="title" value="${esc(q.title)}" placeholder="${esc(t('qph'))}" aria-label="${esc(t('qph'))}">
+  <select class="in qty" data-q="type" aria-label="type">${TYPES.filter(x=>x!=='section').map(x=>`<option value="${x}"${x===q.type?' selected':''}>${esc(t('t_'+x))}</option>`).join('')}</select></div>
+  <input class="in" data-q="desc" value="${esc(q.desc)}" placeholder="${esc(t('qdesc'))}" aria-label="${esc(t('qdesc'))}">
+  ${OPTT.has(q.type)?`<div class="opts">${q.options.map((o,j)=>`<div class="orow">${quiz&&q.type!=='short'?`<input type="checkbox" data-q="corr" data-j="${j}" title="${esc(t('correct'))}" aria-label="${esc(t('correct'))}"${q.correct.indexOf(j)>=0?' checked':''}>`:''}<span class="mk ${q.type}">${q.type==='drop'||q.type==='rank'?(j+1)+'.':''}</span><input class="in" data-q="opt" data-j="${j}" value="${esc(o)}" aria-label="${esc(t('opt'))}"><button class="ib" data-act="delopt" data-i="${i}" data-j="${j}" aria-label="${esc(t('del'))}">×</button></div>`).join('')}<div><button class="btn sm" data-act="addopt" data-i="${i}">+ ${t('addopt')}</button></div></div>`:''}
+  ${grid?`<div class="two"><div class="field"><label>${t('rows')}</label><textarea class="in" data-q="rows" rows="4">${esc((q.rows||[]).join('\n'))}</textarea></div><div class="field"><label>${t('cols')}</label><textarea class="in" data-q="cols" rows="4">${esc((q.cols||[]).join('\n'))}</textarea></div></div>`:''}
+  ${sc?`<div class="two"><div class="field"><label>${t('from')}</label><select class="in" data-q="min">${[0,1].map(v=>`<option${v===q.min?' selected':''}>${v}</option>`).join('')}</select></div>
+  <div class="field"><label>${t('to')}</label><select class="in" data-q="max">${[2,3,4,5,6,7,8,9,10].map(v=>`<option${v===q.max?' selected':''}>${v}</option>`).join('')}</select></div>
+  <div class="field"><label>${t('lmin')}</label><input class="in" data-q="minLabel" value="${esc(q.minLabel)}"></div>
+  <div class="field"><label>${t('lmax')}</label><input class="in" data-q="maxLabel" value="${esc(q.maxLabel)}"></div></div>`:''}
+  ${quiz?`<div class="logic"><span class="muted">${t('points')}</span><input class="in pts" type="number" min="0" data-q="points" value="${esc(q.points)}">${q.type==='short'?`<input class="in" data-q="ctext" value="${esc(q.correctText)}" placeholder="${esc(t('accepted'))}" aria-label="${esc(t('accepted'))}">`:`<span class="muted">✓ = ${t('correct')}</span>`}</div>`:''}
+  ${logicHtml(q,i)}${foot}</section>`;
+}
+function tabQ(){
+  const f=S.cur;
+  return `<div class="stack"><div class="panel"><input class="in ftitle" data-form="title" value="${esc(f.title)}" placeholder="${esc(t('fTitle'))}" aria-label="${esc(t('fTitle'))}">
+  <textarea class="in" data-form="desc" rows="2" placeholder="${esc(t('fDesc'))}" aria-label="${esc(t('fDesc'))}">${esc(f.desc)}</textarea></div>
+  ${f.questions.map((q,i)=>qCard(q,i,f.questions.length)).join('')}
+  <div class="qrow"><select class="in qty" id="newtype" aria-label="type">${TYPES.map(x=>`<option value="${x}">${esc(t('t_'+x))}</option>`).join('')}</select><button class="btn primary" data-act="addq">+ ${t('addq')}</button></div></div>`;
+}
+function tabAI(){
+  const a=S.ai;
+  return `<div class="stack"><p class="muted" style="margin:0">${t('aiHint')}</p>
+  <div class="chat">${a.turns.map(x=>`<div class="msg ${x.r}">${esc(x.text)}</div>`).join('')}${a.busy?`<div class="msg a muted">${t('thinking')}</div>`:''}</div>
+  ${a.err?`<p class="err">${esc(a.err)}</p>`:''}
+  <div class="send"><textarea class="in" id="aiq" rows="2" placeholder="${esc(t('aiPh'))}"></textarea><button class="btn primary" data-act="askai"${a.busy?' disabled':''}>${t('send')}</button></div></div>`;
+}
+function defLink(){return location.origin+'/f/'+S.cur.id}
+function tabShare(){
+  const link=S.link||defLink();
+  return `<div class="stack"><div class="field"><label for="lnk">${t('link')}</label>
+  <div class="linkrow"><input class="in" id="lnk" value="${esc(link)}" dir="ltr"><button class="btn primary" data-act="copy">${t('copy')}</button></div></div>
+  <p class="note">${t('linkHelp')}</p>
+  <div class="field"><span class="lab">${t('qr')}</span><div class="qrbox" id="qr"></div><div><button class="btn" data-act="dlqr">${t('dlQr')}</button></div></div>
+  <div><button class="btn" data-act="docx">${t('docx')}</button></div></div>`;
+}
+function toLocalInput(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)}
+function tabSet(){
+  const f=S.cur;
+  return `<div class="stack">
+  <div class="grp"><h3>${t('gGen')}</h3><div class="two"><div class="field"><label for="sl">${t('fLang')}</label><select class="in" id="sl" data-form="lang"><option value="ar"${f.lang==='ar'?' selected':''}>العربية (RTL)</option><option value="fr"${f.lang==='fr'?' selected':''}>Français</option><option value="en"${f.lang==='en'?' selected':''}>English</option></select></div>
+  <div class="field"><label for="sf">${t('fFont')}</label><select class="in" id="sf" data-form="font">${Object.keys(FONTS).map(k=>`<option value="${k}"${f.font===k?' selected':''}>${FONTS[k].n}</option>`).join('')}</select></div></div>
+  <div class="field"><label for="sc">${t('confirm')}</label><textarea class="in" id="sc" data-form="confirm" rows="2" placeholder="${esc(t('confirmDef',f.lang))}">${esc(f.confirm)}</textarea></div></div>
+  <div class="grp"><h3>${t('gLook')}</h3>
+  <div class="field"><span class="lab">${t('accL')}</span><div class="sws">${Object.keys(ACC).map(k=>`<button class="swc" data-act="acc" data-v="${k}" aria-pressed="${f.accent===k}" aria-label="${k}" style="background:${ACC[k][0]}"></button>`).join('')}</div></div>
+  <div class="field"><label for="himg">${t('hdr')}</label>${f.header?`<img class="himg" alt="" src="${esc(f.header)}">`:''}<div class="qrow"><input class="in" type="file" id="himg" accept="image/*" style="flex:1 1 200px">${f.header?`<button class="btn sm" data-act="rmimg">${t('remove')}</button>`:''}</div></div></div>
+  <div class="grp"><h3>${t('gAccess')}</h3>
+  <label class="sw"><input type="checkbox" data-form="accepting"${f.accepting?' checked':''}>${t('accepting')}</label>
+  <label class="sw"><input type="checkbox" data-form="oneResp"${f.oneResp?' checked':''}>${t('oneResp')}</label>
+  <div class="field"><label for="sca">${t('closeAt')}</label><input class="in" type="datetime-local" id="sca" data-form="closeAt" value="${esc(toLocalInput(f.closeAt))}" dir="ltr"></div>
+  <div class="field"><label for="smx">${t('maxResp')}</label><input class="in" type="number" min="0" id="smx" data-form="maxResponses" value="${esc(f.maxResponses||0)}" dir="ltr"></div></div>
+  <div class="grp"><h3>${t('gQuiz')}</h3>
+  <label class="sw"><input type="checkbox" data-form="quiz"${f.quiz?' checked':''}>${t('quizOn')}</label>
+  ${f.quiz?`<label class="sw"><input type="checkbox" data-form="showScore"${f.showScore?' checked':''}>${t('showScore')}</label><p class="note">${t('quizHint')}</p>`:''}</div>
+  <div class="grp"><h3>${t('gTools')}</h3><div class="field"><label for="trl">${t('trLabel')}</label><div class="qrow"><select class="in" id="trl" style="flex:1 1 140px">${['ar','fr','en'].filter(l=>l!==f.lang).map(l=>`<option value="${l}">${{ar:'العربية',fr:'Français',en:'English'}[l]}</option>`).join('')}</select><button class="btn" data-act="translate"${S.trBusy?' disabled':''}>${S.trBusy?t('thinking'):t('trBtn')}</button></div>${S.trErr?`<p class="err">${esc(S.trErr)}</p>`:''}</div></div>
+  <div><button class="btn danger" data-act="delform">${S.delArm?t('delSure'):t('del')}</button></div></div>`;
+}
+
+/* --- results --- */
+function donut(keys,cnt,total){
+  let off=25,seg='';
+  keys.forEach((k,i)=>{const c=cnt(k);if(!c)return;const p=c/total*100;seg+=`<circle r="15.9155" cx="21" cy="21" fill="none" stroke="var(--c${i%6+1})" stroke-width="6" stroke-dasharray="${p.toFixed(2)} ${(100-p).toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>`;off-=p});
+  return `<svg viewBox="0 0 42 42" class="donut" role="img" aria-label="chart"><circle r="15.9155" cx="21" cy="21" fill="none" stroke="var(--line)" stroke-width="6"/>${seg}<text x="21" y="23.2" text-anchor="middle" font-size="7" fill="var(--ink)" font-weight="700">${total}</text></svg>`;
+}
+function summary(q,rows){
+  if(q.type==='section')return '';
+  const vals=rows.map(r=>r.answers&&r.answers[q.id]).filter(v=>!emptyV(v));
+  const head=`<h3>${esc(q.title||'—')} <small class="muted">· ${vals.length}</small></h3>`;
+  let body='';
+  if(q.type==='choice'||q.type==='drop'){
+    const flat=vals.map(String);const keys=q.options.slice();flat.forEach(v=>{if(keys.indexOf(v)<0)keys.push(v)});
+    const cnt=k=>flat.filter(v=>v===k).length,tot=flat.length||1;
+    body=`<div class="dwrap">${donut(keys,cnt,flat.length)}<ul class="legend">${keys.map((k,i)=>`<li><i style="background:var(--c${i%6+1})"></i><span>${esc(k)}</span><b>${cnt(k)} · ${Math.round(cnt(k)/tot*100)}%</b></li>`).join('')}</ul></div>`;
+  }else if(q.type==='multi'){
+    const flat=[].concat.apply([],vals).map(String);const keys=q.options.slice();flat.forEach(v=>{if(keys.indexOf(v)<0)keys.push(v)});
+    const cnt=k=>flat.filter(v=>v===k).length,max=Math.max(1,...keys.map(cnt));
+    body=keys.map(k=>`<div class="bar2"><span>${esc(k)}</span><div class="tr"><div class="fl" style="width:${Math.round(cnt(k)/max*100)}%"></div></div><b>${cnt(k)}</b></div>`).join('');
+  }else if(q.type==='scale'){
+    const keys=[];for(let v=q.min;v<=q.max;v++)keys.push(v);
+    const nums=vals.map(Number),cnt=k=>nums.filter(v=>v===k).length,max=Math.max(1,...keys.map(cnt));
+    const avg=nums.length?(nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(2):'—';
+    body=`<div class="cols">${keys.map(k=>`<div><em style="height:${Math.round(cnt(k)/max*100)}%"></em><b>${cnt(k)}</b><span>${k}</span></div>`).join('')}</div><span class="muted">${t('avg')}: <b>${avg}</b></span>`;
+  }else if(q.type==='grid'||q.type==='gridm'){
+    const R=rowsOf(q),Cc=colsOf(q);
+    const cnt=(r,c)=>vals.filter(v=>v&&(Array.isArray(v[r])?v[r].indexOf(c)>=0:v[r]===c)).length;
+    body=`<div class="gscroll"><table class="gt"><thead><tr><th></th>${Cc.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${R.map(r=>`<tr><th scope="row">${esc(r)}</th>${Cc.map(c=>`<td>${cnt(r,c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }else if(q.type==='rank'){
+    const n=q.options.length;
+    const avgs=q.options.map(o=>{const ps=vals.map(v=>Array.isArray(v)?v.indexOf(o)+1:0).filter(p=>p>0);return{o:o,a:ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:null}}).sort((x,y)=>(x.a==null)-(y.a==null)||x.a-y.a);
+    body=`<span class="muted">${t('avgRank')}</span>`+avgs.map(x=>`<div class="bar2"><span>${esc(x.o)}</span><div class="tr"><div class="fl" style="width:${x.a==null?0:Math.round((n-x.a+1)/n*100)}%"></div></div><b>${x.a==null?'—':x.a.toFixed(1)}</b></div>`).join('');
+  }else{
+    body=`<ul class="txt">${vals.slice(0,12).map(v=>`<li>${esc(v)}</li>`).join('')}</ul>`;
+  }
+  return `<div class="rsum">${head}${body}</div>`;
+}
+function tabResp(){
+  const R=S.resp,f=S.cur;
+  if(!R||R.loading) return `<p class="muted">${t('loading')}</p>`;
+  const sc=R.rows.filter(r=>typeof r.score==='number'&&r.max>0);
+  const avgSc=sc.length?(sc.reduce((a,r)=>a+r.score/r.max,0)/sc.length*100).toFixed(0)+'%':null;
+  return `<div class="stack"><div class="qfoot" style="border:0;padding:0;gap:8px"><b>${R.rows.length} ${t('respN')}</b><span class="grow"></span><button class="btn sm" data-act="refresh">${t('refresh')}</button><button class="btn sm primary" data-act="xlsx"${R.rows.length?'':' disabled'}>${t('xlsx')}</button><button class="btn sm" data-act="csv"${R.rows.length?'':' disabled'}>${t('csv')}</button></div>
+  ${avgSc?`<p class="note">${t('avgScore')}: <b>${avgSc}</b></p>`:''}
+  ${R.rows.length?`<div><button class="btn" data-act="analyze"${R.aiBusy?' disabled':''}>${R.aiBusy?t('thinking'):'✦ '+t('analyze')}</button></div>
+  ${R.aiErr?`<p class="err">${esc(R.aiErr)}</p>`:''}${R.analysis?`<div><h3 style="margin-bottom:6px">${t('analysisT')}</h3><div class="analysis" id="analysis">${esc(R.analysis)}</div></div>`:''}
+  ${f.questions.map(q=>summary(q,R.rows)).join('')}`:`<p class="muted">${t('noResp')}</p>`}</div>`;
+}
+function viewEdit(){
+  const tabs=[['q','tabQ'],['ai','tabAI'],['share','tabShare'],['resp','tabResp'],['set','tabSet']];
+  const body=S.tab==='q'?tabQ():S.tab==='ai'?tabAI():S.tab==='share'?tabShare():S.tab==='resp'?tabResp():tabSet();
+  return `<div class="ehead"><button class="btn sm" data-act="back">${t('back')}</button><span class="muted grow" id="status"></span><button class="btn sm" data-act="preview">${t('preview')}</button></div>
+  <nav class="tabs" role="tablist">${tabs.map(x=>`<button role="tab" data-act="tab" data-v="${x[0]}" aria-selected="${S.tab===x[0]}">${t(x[1])}</button>`).join('')}</nav>${body}`;
+}
+
+/* ---------- fill view ---------- */
+function qInput(q,lg){
+  const n='q_'+q.id;
+  switch(q.type){
+    case 'long':return `<textarea class="in" id="${n}" name="${n}" rows="4"></textarea>`;
+    case 'choice':return `<div class="choices">${q.options.map(o=>`<label class="ch"><input type="radio" name="${n}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join('')}</div>`;
+    case 'multi':return `<div class="choices">${q.options.map(o=>`<label class="ch"><input type="checkbox" name="${n}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join('')}</div>`;
+    case 'drop':return `<select class="in" id="${n}" name="${n}"><option value="">${t('choose',lg)}</option>${q.options.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select>`;
+    case 'scale':{let r='';for(let v=q.min;v<=q.max;v++)r+=`<label class="sc"><span>${v}</span><input type="radio" name="${n}" value="${v}"></label>`;
+      return `<div class="scale"><span class="sl">${esc(q.minLabel)}</span><div class="sn">${r}</div><span class="sl">${esc(q.maxLabel)}</span></div>`}
+    case 'grid':case 'gridm':{const R=rowsOf(q),Cc=colsOf(q),ty=q.type==='grid'?'radio':'checkbox';
+      return `<div class="gscroll"><table class="gt"><thead><tr><th></th>${Cc.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${R.map((r,ri)=>`<tr><th scope="row">${esc(r)}</th>${Cc.map(c=>`<td><input type="${ty}" name="${n}__${ri}" value="${esc(c)}" aria-label="${esc(r+' - '+c)}"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+    case 'rank':return `<div class="choices">${q.options.map((o,oi)=>`<label class="rk"><select class="in" name="${n}__${oi}" aria-label="${esc(o)}"><option value="">—</option>${q.options.map((x,k)=>`<option value="${k+1}">${k+1}</option>`).join('')}</select><span>${esc(o)}</span></label>`).join('')}</div>`;
+    case 'date':return `<input class="in" type="date" id="${n}" name="${n}">`;
+    case 'time':return `<input class="in" type="time" id="${n}" name="${n}">`;
+    case 'email':return `<input class="in" type="email" id="${n}" name="${n}" dir="ltr">`;
+    case 'number':return `<input class="in" type="number" id="${n}" name="${n}" dir="ltr">`;
+    default:return `<input class="in" type="text" id="${n}" name="${n}">`;
+  }
+}
+const LABFOR=new Set(['short','long','drop','date','time','email','number']);
+function isClosed(f){return !f.accepting||(f.closeAt&&Date.now()>new Date(f.closeAt).getTime())}
+function curPages(){const e=effective(S.fillForm,S.fill.ans||{});return pagesOf(S.fillForm).filter(p=>!p.sec||e.sec[p.sec.id])}
+function viewFill(){
+  const f=S.fillForm,lg=f?f.lang:S.ui;
+  if(!S.ready||S.fill.loading) return `<p class="muted">${t('loading')}</p>`;
+  if(!f) return `<p class="note">${t('notFound')}</p>`;
+  const F=FONTS[f.font]||FONTS.cairo,A=ACC[f.accent];
+  const st=`font-family:${F.css};font-size:${F.z}em${A&&f.accent!=='teal'?`;--accent:${A[0]};--accent-ink:${A[1]};--accent-soft:color-mix(in srgb,${A[0]} 14%,var(--surface))`:''}`;
+  const prev=S.route.preview;
+  const pv=prev?`<div class="ehead"><button class="btn sm" data-act="exitpreview">${t('back',S.ui)}</button><span class="muted">${t('previewNote',S.ui)}</span></div>`:'';
+  const title=esc(f.title||t('untitled',lg));
+  if(S.fill.done){
+    const r=S.fill.result;
+    return `${pv}<article class="sheet" style="${st}"><div class="done"><h1>${title}</h1><p>${esc(f.confirm||t('confirmDef',lg))}</p>
+    ${r&&f.quiz&&f.showScore&&r.max>0?`<div><div class="muted">${t('yourScore',lg)}</div><div class="score">${r.score} / ${r.max}</div></div>${r.wrong.length?`<div class="wrong"><b>${t('wrongList',lg)}</b>${r.wrong.map(w=>`<div>• ${esc(w.title)}: <b>${esc(w.correct)}</b></div>`).join('')}</div>`:''}`:''}
+    <div><button class="btn" data-act="again">${t('another',lg)}</button></div></div></article>`;
+  }
+  if(isClosed(f)&&!prev) return `<article class="sheet" style="${st}"><h1>${title}</h1><p class="muted">${f.closeAt&&f.accepting?t('closedAuto',lg):t('closed',lg)}</p></article>`;
+  const P=curPages(),p=Math.min(S.fill.page||0,P.length-1),pg=P[p]||{sec:null,items:[]},last=p>=P.length-1;
+  const head=p===0?`<header style="display:grid;gap:8px">${f.header?`<img class="himg" alt="" src="${esc(f.header)}">`:''}<h1>${title}</h1>${f.desc?`<p style="margin:0;white-space:pre-wrap">${esc(f.desc)}</p>`:''}${S.fill.edit?`<p class="note">${t('editing',lg)}</p>`:''}</header>`:'';
+  const secH=pg.sec?`<header style="display:grid;gap:6px"><h2>${esc(pg.sec.title)}</h2>${pg.sec.desc?`<p style="margin:0;white-space:pre-wrap">${esc(pg.sec.desc)}</p>`:''}</header>`:'';
+  const prog=P.length>1?`<div class="pg"><span class="sl">${t('pageOf',lg)} ${p+1} ${t('of',lg)} ${P.length}</span><div class="pgbar"><i style="width:${Math.round((p+1)/P.length*100)}%"></i></div></div>`:'';
+  return `${pv}<article class="sheet" style="${st}">${head}${prog}${secH}
+  <form id="fillform" novalidate style="display:grid;gap:22px">${pg.items.map(q=>`<section class="fq" data-qid="${q.id}"><label class="ql"${LABFOR.has(q.type)?` for="q_${q.id}"`:''}>${esc(q.title)}${q.required?'<i>*</i>':''}</label>${q.desc?`<p class="qd">${esc(q.desc)}</p>`:''}${qInput(q,lg)}<p class="err" data-err="${q.id}" hidden>${t('needed',lg)}</p></section>`).join('')}
+  <p class="err fail" id="fillmsg" hidden></p>
+  <div class="qrow">${p>0?`<button class="btn" type="button" data-act="fprev">${t('prev',lg)}</button>`:''}${last?`<button class="btn primary" type="submit">${t('submit',lg)}</button>`:`<button class="btn primary" type="button" data-act="fnext">${t('next',lg)}</button>`}</div></form></article>`;
+}
+function readQ(q,root){
+  const n='q_'+q.id;
+  if(q.type==='choice'){const e=root.querySelector(`input[name="${n}"]:checked`);return e?e.value:''}
+  if(q.type==='scale'){const e=root.querySelector(`input[name="${n}"]:checked`);return e?Number(e.value):''}
+  if(q.type==='multi')return Array.from(root.querySelectorAll(`input[name="${n}"]:checked`)).map(e=>e.value);
+  if(q.type==='grid'||q.type==='gridm'){
+    const o={};rowsOf(q).forEach((r,ri)=>{
+      if(q.type==='grid'){const e=root.querySelector(`input[name="${n}__${ri}"]:checked`);if(e)o[r]=e.value}
+      else{const a=Array.from(root.querySelectorAll(`input[name="${n}__${ri}"]:checked`)).map(e=>e.value);if(a.length)o[r]=a}
+    });return o}
+  if(q.type==='rank'){
+    const pairs=[];q.options.forEach((op,oi)=>{const s=root.querySelector(`[name="${n}__${oi}"]`);if(s&&s.value)pairs.push({o:op,r:Number(s.value)})});
+    const ranks=pairs.map(x=>x.r);
+    if(new Set(ranks).size!==ranks.length)return[];
+    return pairs.sort((a,b)=>a.r-b.r).map(x=>x.o)}
+  const e=root.querySelector(`[name="${n}"]`);return e?String(e.value).trim():'';
+}
+function setQ(q,v,root){
+  if(v==null)return;const n='q_'+q.id;
+  const all=sel=>root.querySelectorAll(sel);
+  if(q.type==='choice'||q.type==='scale')all(`input[name="${n}"]`).forEach(i=>{i.checked=i.value===String(v)});
+  else if(q.type==='multi')all(`input[name="${n}"]`).forEach(i=>{i.checked=Array.isArray(v)&&v.indexOf(i.value)>=0});
+  else if(q.type==='grid'||q.type==='gridm'){rowsOf(q).forEach((r,ri)=>{const rv=v[r];all(`input[name="${n}__${ri}"]`).forEach(i=>{i.checked=Array.isArray(rv)?rv.indexOf(i.value)>=0:i.value===rv})})}
+  else if(q.type==='rank')q.options.forEach((o,oi)=>{const s=root.querySelector(`[name="${n}__${oi}"]`);const p=Array.isArray(v)?v.indexOf(o):-1;if(s)s.value=p>=0?String(p+1):''});
+  else{const e=root.querySelector(`[name="${n}"]`);if(e)e.value=v}
+}
+function collectPage(){
+  const root=$('#fillform');if(!root||!S.fillForm)return;
+  const P=curPages(),pg=P[Math.min(S.fill.page||0,P.length-1)];if(!pg)return;
+  pg.items.forEach(q=>{S.fill.ans[q.id]=readQ(q,root)});
+}
+function applyLogic(){
+  const f=S.fillForm,root=$('#fillform');if(!root)return;
+  const e=effective(f,S.fill.ans).eff;
+  root.querySelectorAll('.fq').forEach(el=>{const q=f.questions.find(x=>x.id===el.dataset.qid);if(q)el.hidden=!condOk(q,e,f)});
+}
+function validatePage(){
+  const f=S.fillForm,root=$('#fillform');let first=null;
+  const P=curPages(),pg=P[Math.min(S.fill.page||0,P.length-1)];if(!pg)return true;
+  pg.items.forEach(q=>{
+    const el=root.querySelector(`.fq[data-qid="${q.id}"]`),er=root.querySelector(`[data-err="${q.id}"]`);
+    if(!el||!er)return;
+    let bad=false;
+    if(!el.hidden){
+      const v=S.fill.ans[q.id];
+      if(q.type==='rank'){
+        const raw=q.options.map((o,oi)=>{const s=root.querySelector(`[name="q_${q.id}__${oi}"]`);return s?s.value:''}).filter(Boolean);
+        const dupe=new Set(raw).size!==raw.length;
+        bad=dupe||(q.required&&raw.length!==q.options.length);
+        er.textContent=dupe?t('rankErr',f.lang):t('needed',f.lang);
+      }else bad=q.required&&!complete(q,v);
+    }
+    er.hidden=!bad;if(bad&&!first)first=er;
+  });
+  if(first){first.scrollIntoView({block:'center'});return false}
+  return true;
+}
+function afterRender(){
+  if(S.route.type!=='fill'||!S.fillForm||S.fill.done||S.fill.loading)return;
+  const root=$('#fillform');if(!root)return;
+  const P=curPages(),pg=P[Math.min(S.fill.page||0,P.length-1)];
+  if(pg)pg.items.forEach(q=>setQ(q,S.fill.ans[q.id],root));
+  applyLogic();
+}
+
+/* ---------- render ---------- */
+function render(){
+  const R=S.route;
+  const lg=(R.type==='fill'&&S.fillForm)?S.fillForm.lang:S.ui;
+  document.documentElement.lang=lg;document.documentElement.dir=lg==='ar'?'rtl':'ltr';
+  let h;
+  if(R.type==='fill') h=viewFill();
+  else if(!S.ready) h=`<p class="muted">${t('loading')}</p>`;
+  else if(!S.canEdit) h=viewNoEdit();
+  else if(R.type==='edit'&&S.cur) h=viewEdit();
+  else h=viewHome();
+  $('#app').innerHTML=h;$('#bar').innerHTML=barHtml();
+  if(R.type==='edit'){updStatus();if(S.tab==='share')renderQr()}
+  afterRender();
+}
+function qrSvg(link){
+  if(!window.qrcode) return '';
+  try{const q=window.qrcode(0,'M');q.addData(link,'Byte');q.make();
+    try{return q.createSvgTag({cellSize:4,margin:2,scalable:true})}catch(e){return q.createSvgTag(4,8)}}catch(e){return ''}
+}
+function renderQr(){const el=$('#qr');if(el)el.innerHTML=qrSvg(S.link||defLink())}
+
+/* ---------- exports ---------- */
+async function save(filename,data){
+  const types={csv:'text/csv;charset=utf-8',svg:'image/svg+xml',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
+  const blob=data instanceof Blob?data:new Blob([data],{type:types[filename.split('.').pop()]||'application/octet-stream'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+function csvEsc(v){v=cellText(v);return '"'+v.replace(/"/g,'""')+'"'}
+function cellText(v){
+  if(v==null)return '';
+  if(Array.isArray(v))return v.join(' | ');
+  if(typeof v==='object')return Object.keys(v).map(k=>k+': '+(Array.isArray(v[k])?v[k].join(' | '):v[k])).join('; ');
+  return String(v);
+}
+function tableData(){
+  const f=S.cur,rows=(S.resp&&S.resp.rows)||[],qs=f.questions.filter(q=>q.type!=='section');
+  const head=[t('when')].concat(qs.map(q=>q.title));if(f.quiz)head.push(t('score'));
+  const body=rows.map(r=>{const a=[new Date(r.at).toISOString().replace('T',' ').slice(0,16)].concat(qs.map(q=>cellText(r.answers?r.answers[q.id]:'')));if(f.quiz)a.push(typeof r.score==='number'?r.score+' / '+r.max:'');return a});
+  return [head].concat(body);
+}
+async function dlCsv(){save('responses.csv','﻿'+tableData().map(r=>r.map(csvEsc).join(',')).join('\r\n'))}
+async function dlXlsx(){
+  if(!window.XLSX){return dlCsv()}
+  const ws=XLSX.utils.aoa_to_sheet(tableData());
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Responses');
+  if(S.cur.lang==='ar')wb.Workbook={Views:[{RTL:true}]};
+  const ab=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+  save('responses.xlsx',ab);
+}
+async function dlQr(){
+  const s=qrSvg(S.link||defLink());if(!s)return;
+  save('qr-code.svg',s.replace('<svg ','<svg style="background:#fff" '));
+}
+async function dlDocx(){
+  if(!window.JSZip)return;
+  const f=S.cur,rtl=f.lang==='ar',font=(FONTS[f.font]||FONTS.cairo).n;
+  const x=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const P=(text,o)=>{o=o||{};const sz=o.sz||24;return `<w:p><w:pPr>${rtl?'<w:bidi/>':''}<w:spacing w:after="${o.after==null?120:o.after}"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:cs="${font}"/>${o.b?'<w:b/><w:bCs/>':''}${rtl?'<w:rtl/>':''}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr><w:t xml:space="preserve">${x(text)}</w:t></w:r></w:p>`};
+  let body=P(f.title||t('untitled',f.lang),{b:1,sz:40});
+  if(f.desc)f.desc.split('\n').forEach(l=>{body+=P(l)});
+  let n=0;
+  f.questions.forEach(q=>{
+    if(q.type==='section'){body+=P(q.title,{b:1,sz:30});if(q.desc)body+=P(q.desc);return}
+    n++;body+=P(n+'. '+q.title+(q.required?' *':''),{b:1});
+    if(q.desc)body+=P(q.desc,{sz:20});
+    if(q.type==='choice'||q.type==='drop')q.options.forEach(o=>{body+=P('○  '+o,{after:60})});
+    else if(q.type==='multi')q.options.forEach(o=>{body+=P('☐  '+o,{after:60})});
+    else if(q.type==='rank')q.options.forEach(o=>{body+=P('____  '+o,{after:60})});
+    else if(q.type==='scale'){let s='';for(let v=q.min;v<=q.max;v++)s+='○ '+v+'   ';body+=P((q.minLabel?q.minLabel+'   ':'')+s+(q.maxLabel?q.maxLabel:''))}
+    else if(q.type==='grid'||q.type==='gridm'){const m=q.type==='grid'?'○ ':'☐ ';body+=P(colsOf(q).join('  |  '),{sz:20});rowsOf(q).forEach(r=>{body+=P(r+':   '+colsOf(q).map(c=>m+c).join('   '),{after:60})})}
+    else if(q.type==='long'){body+=P('______________________________________________');body+=P('______________________________________________');body+=P('______________________________________________')}
+    else body+=P('______________________________________________');
+  });
+  const z=new JSZip();
+  z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+  z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  z.file('word/document.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+body+'<w:sectPr/></w:body></w:document>');
+  const ab=await z.generateAsync({type:'arraybuffer'});
+  save('form.docx',ab);
+}
+
+/* ---------- actions ---------- */
+function setRoute(r){S.route=r;S.delArm=false;render();window.scrollTo(0,0)}
+function openEdit(id){
+  const f=S.forms.find(x=>x.id===id);if(!f)return;
+  S.cur=Object.assign(blank(S.ui),clone(f));S.cur.questions=(S.cur.questions||[]).map(q=>Object.assign(mkQ(q.type,S.cur.lang),q));
+  S.tab='q';S.resp=null;S.link='';S.ai={turns:[],busy:false,err:''};S.status='';S.trErr='';
+  setRoute({type:'edit'});
+}
+async function createForm(f){
+  f.id=store.newId();S.forms.push(f);
+  try{await store.save(f)}catch(e){}
+  S.cur=clone(f);S.tab='q';S.resp=null;S.link='';S.ai={turns:[],busy:false,err:''};S.status='';S.trErr='';
+  setRoute({type:'edit'});
+}
+async function loadResp(){
+  S.resp={loading:true};render();
+  try{S.resp={rows:await store.responses(S.cur.id)}}catch(e){S.resp={rows:[]}}
+  if(S.route.type==='edit'&&S.tab==='resp')render();
+}
+async function analyze(){
+  const R=S.resp;if(!R||!R.rows||R.aiBusy)return;
+  const sample=await use('sample');
+  if(!sample){R.aiErr=t('aiOff');render();return}
+  const f=S.cur,rows=R.rows;
+  const data=f.questions.filter(q=>q.type!=='section').map(q=>{
+    const vals=rows.map(r=>r.answers&&r.answers[q.id]).filter(v=>!emptyV(v));
+    const o={question:q.title,type:q.type,answered:vals.length};
+    if(OPTT.has(q.type)||q.type==='scale'){const c={};vals.forEach(v=>{(Array.isArray(v)?v:[v]).forEach(x=>{c[x]=(c[x]||0)+1})});o.counts=c}
+    else if(q.type==='grid'||q.type==='gridm'){o.answers=vals.slice(0,60).map(v=>cellText(v))}
+    else o.answers=vals.slice(0,60).map(v=>String(v).slice(0,240));
+    return o;
+  });
+  const prompt='You analyze survey results. Write in '+LNAME[f.lang]+'. Give: (1) a 2-3 sentence overview, (2) the most notable findings with numbers, (3) patterns or contradictions in the open-text answers, (4) three concrete recommendations. Use short plain paragraphs and simple dashes for lists, no markdown symbols like # or *. Do not invent data.\n\nForm title: '+f.title+'\nTotal responses: '+rows.length+'\n\nDATA:\n'+JSON.stringify(data);
+  R.aiBusy=true;R.aiErr='';R.analysis='';render();
+  try{
+    await sample(prompt,{onText:({text})=>{R.analysis=text;const el=$('#analysis');if(el)el.textContent=text;else render()}});
+  }catch(e){R.aiErr=e&&(e.code==='not_granted'||e.code==='sampling_disabled')?t('aiOff'):t('aiErr');if(e&&e.text&&!R.analysis)R.analysis=e.text}
+  R.aiBusy=false;if(S.route.type==='edit'&&S.tab==='resp'&&S.resp===R)render();
+}
+async function sendAI(){
+  const el=$('#aiq');const msg=el?el.value.trim():'';if(!msg||S.ai.busy)return;
+  S.ai.busy=true;S.ai.err='';render();
+  try{
+    const r=await askAI(msg,S.cur);
+    S.ai.turns.push({r:'u',text:msg});
+    S.ai.turns.push({r:'a',text:String(r&&r.reply||'')||'✓'});
+    if(S.cur&&applyAI(S.cur,r))touch();
+  }catch(e){S.ai.err=e&&(e.code==='off'||e.code==='not_granted')?t('aiOff'):t('aiErr')}
+  S.ai.busy=false;if(S.route.type==='edit'&&S.tab==='ai')render();
+}
+async function homeAI(){
+  const el=$('#hai');const msg=el?el.value.trim():'';
+  if((!msg&&!S.homeFile)||S.homeAi.busy)return;
+  S.homeAi={busy:true,err:''};render();
+  const f=blank(S.ui);
+  try{
+    const r=await askAI(msg||'Build a suitable survey form from the source document.',f,S.homeFile?S.homeFile.text:'');
+    if(!applyAI(f,r)) throw {code:'bad'};
+    S.homeAi={busy:false,err:''};S.homeFile=null;
+    await createForm(f);
+  }catch(e){S.homeAi={busy:false,err:e&&(e.code==='off'||e.code==='not_granted')?t('aiOff'):t('aiErr')};render()}
+}
+async function translate(){
+  const sel=$('#trl');if(!sel||S.trBusy)return;const target=sel.value;
+  S.trBusy=true;S.trErr='';render();
+  try{
+    const sl=await use('sample');if(!sl)throw {code:'off'};
+    const prompt='Translate this survey form from '+LNAME[S.cur.lang]+' to '+LNAME[target]+'. Reply with ONLY a JSON object {"form":{"title":string,"description":string,"confirm":string,"lang":"'+target+'","questions":[...]}}. The questions array MUST have exactly the same number and order of items as the input. For every item translate "title", "description", "minLabel", "maxLabel", "correctText" (if not empty, keep numbers), and translate every string in "options", "rows" and "cols" keeping each array the same length and order. Do not change anything else.\n\nFORM:\n'+JSON.stringify(slim(S.cur));
+    const r=await sl.json(prompt,{cache:false});
+    if(!applyTranslation(S.cur,r))throw {code:'bad'};
+    touch();
+  }catch(e){S.trErr=e&&(e.code==='off'||e.code==='not_granted')?t('aiOff'):t('aiErr')}
+  S.trBusy=false;if(S.route.type==='edit')render();
+}
+function copyLink(btn){
+  const el=$('#lnk');const link=el.value;
+  const ok=()=>{btn.textContent=t('copied');setTimeout(()=>{btn.textContent=t('copy')},1500)};
+  try{navigator.clipboard.writeText(link).then(ok,()=>{el.select()})}catch(e){el.select()}
+}
+function readImage(file){
+  const rd=new FileReader();
+  rd.onload=()=>{const im=new Image();im.onload=()=>{
+    const W=1000,H=280,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+    const s=Math.max(W/im.width,H/im.height),w=im.width*s,h=im.height*s;g.drawImage(im,(W-w)/2,(H-h)/2,w,h);
+    S.cur.header=c.toDataURL('image/jpeg',0.75);touch();render()};im.src=rd.result};
+  rd.readAsDataURL(file);
+}
+function dropOptionRefs(q,j){
+  q.correct=q.correct.filter(k=>k!==j).map(k=>k>j?k-1:k);
+  S.cur.questions.forEach(o=>{if(o.showIf&&o.showIf.q===q.id&&typeof o.showIf.vi==='number'){if(o.showIf.vi===j)o.showIf=null;else if(o.showIf.vi>j)o.showIf.vi--}});
+}
+
+/* ---------- fill flow ---------- */
+function goNext(){
+  collectPage();if(!validatePage())return;
+  S.fill.page=(S.fill.page||0)+1;render();window.scrollTo(0,0);
+}
+async function submitFill(){
+  const f=S.fillForm;if(S.fill.busy)return;
+  collectPage();if(!validatePage())return;
+  const eff=effective(f,S.fill.ans).eff,answers={};
+  Object.keys(eff).forEach(k=>{const v=eff[k];if(!emptyV(v)&&!(typeof v==='object'&&!Array.isArray(v)&&!Object.keys(v).length))answers[k]=v});
+  const payload={formId:f.id,answers:answers,at:Date.now()};
+  let result=null;
+  if(f.quiz){result=gradeAll(f,eff);payload.score=result.score;payload.max=result.max}
+  if(S.route.preview){S.fill={done:true,result:result,ans:S.fill.ans,page:0};render();window.scrollTo(0,0);return}
+  S.fill.busy=true;
+  const btn=$('#fillform button[type=submit]');if(btn)btn.disabled=true;
+  try{const res=await store.submit(f.id,payload,!!f.oneResp);S.fill={done:true,result:(res&&res.result)||null,ans:f.oneResp?answers:{},page:0};render();window.scrollTo(0,0)}
+  catch(x){S.fill.busy=false;if(btn)btn.disabled=false;const m=$('#fillmsg');if(m){m.textContent=x&&x.status===403?t('closed',f.lang):t('submitFail',f.lang);m.hidden=false}}
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act,f=S.cur,i=+b.dataset.i;
+  if(a==='lang'){S.ui=b.dataset.v;try{localStorage.setItem('sv_ui',S.ui)}catch(x){}render()}
+  else if(a==='theme'){const d=document.documentElement;const dark=d.dataset.theme?d.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;d.dataset.theme=dark?'light':'dark';try{localStorage.setItem('sv_th',d.dataset.theme)}catch(x){}}
+  else if(a==='signin'||a==='signup'){
+    const em=$('#em').value.trim(),pw=$('#pw').value,msg=$('#authmsg');
+    const say=(x,ok)=>{msg.textContent=x;msg.hidden=!x;msg.style.color=ok?'var(--ok)':''};
+    if(!em||!pw){say(t('authNeed'));return}
+    b.disabled=true;
+    if(a==='signin'){const {error}=await SB.auth.signInWithPassword({email:em,password:pw});if(error){say(error.message);b.disabled=false}}
+    else{const {data,error}=await SB.auth.signUp({email:em,password:pw});b.disabled=false;if(error)say(error.message);else if(!data.session)say(t('confirmMail'),true)}
+  }
+  else if(a==='signout'){await SB.auth.signOut()}
+  else if(a==='new')createForm(blank(S.ui));
+  else if(a==='tpl')createForm(TPLS[+b.dataset.v].make(S.ui));
+  else if(a==='aihome')homeAI();
+  else if(a==='open')openEdit(b.dataset.id);
+  else if(a==='back'){await flush();S.cur=null;if(location.hash)location.hash='';setRoute({type:'home'})}
+  else if(a==='tab'){S.tab=b.dataset.v;S.delArm=false;render();if(S.tab==='resp'&&!S.resp)loadResp()}
+  else if(a==='addq'){f.questions.push(mkQ($('#newtype').value,f.lang));touch();render()}
+  else if(a==='qdel'){f.questions.splice(i,1);touch();render()}
+  else if(a==='qup'&&i>0){f.questions.splice(i-1,0,f.questions.splice(i,1)[0]);touch();render()}
+  else if(a==='qdn'&&i<f.questions.length-1){f.questions.splice(i+1,0,f.questions.splice(i,1)[0]);touch();render()}
+  else if(a==='qdup'){const c=clone(f.questions[i]);c.id=uid();c.showIf=null;f.questions.splice(i+1,0,c);touch();render()}
+  else if(a==='addopt'){const q=f.questions[i];q.options.push(t('opt',f.lang)+' '+(q.options.length+1));touch();render()}
+  else if(a==='delopt'){const q=f.questions[i],j=+b.dataset.j;if(q.options.length>1){q.options.splice(j,1);dropOptionRefs(q,j);touch();render()}}
+  else if(a==='acc'){f.accent=b.dataset.v;touch();render()}
+  else if(a==='rmimg'){f.header='';touch();render()}
+  else if(a==='translate')translate();
+  else if(a==='preview'){await flush();S.fillForm=clone(S.cur);S.fill={ans:{},page:0};setRoute({type:'fill',preview:true,id:S.cur.id})}
+  else if(a==='exitpreview'){S.fill={};setRoute({type:'edit'})}
+  else if(a==='copy')copyLink(b);
+  else if(a==='dlqr')dlQr();
+  else if(a==='docx')dlDocx();
+  else if(a==='refresh')loadResp();
+  else if(a==='csv')dlCsv();
+  else if(a==='xlsx')dlXlsx();
+  else if(a==='analyze')analyze();
+  else if(a==='askai')sendAI();
+  else if(a==='again'){S.fill={ans:{},page:0};render();window.scrollTo(0,0)}
+  else if(a==='fnext')goNext();
+  else if(a==='fprev'){collectPage();S.fill.page=Math.max(0,(S.fill.page||0)-1);render();window.scrollTo(0,0)}
+  else if(a==='delform'){
+    if(!S.delArm){S.delArm=true;render();return}
+    const id=S.cur.id;S.cur=null;S.forms=S.forms.filter(x=>x.id!==id);
+    try{await store.remove(id)}catch(x){}
+    setRoute({type:'home'});
+  }
+});
+document.addEventListener('input',e=>{
+  const el=e.target,f=S.cur;
+  if(el.closest&&el.closest('#fillform')){collectPage();applyLogic();return}
+  if(el.id==='lnk'){S.link=el.value.trim();renderQr();return}
+  if(!f||S.route.type!=='edit')return;
+  const fk=el.dataset.form;
+  if(fk==='title'||fk==='desc'||fk==='confirm'){f[fk]=el.value;touch();return}
+  const card=el.closest('.qcard');if(!card||!el.dataset.q)return;
+  const q=f.questions[+card.dataset.i],k=el.dataset.q;
+  if(k==='title'||k==='minLabel'||k==='maxLabel'||k==='desc')q[k]=el.value;
+  else if(k==='opt')q.options[+el.dataset.j]=el.value;
+  else if(k==='rows'||k==='cols')q[k]=el.value.split('\n');
+  else if(k==='points')q.points=Math.max(0,Number(el.value)||0);
+  else if(k==='ctext')q.correctText=el.value;
+  else if(k==='lv'&&q.showIf){q.showIf.v=el.value}
+  else return;
+  touch();
+});
+document.addEventListener('change',async e=>{
+  const el=e.target,f=S.cur;
+  if(el.closest&&el.closest('#fillform')){collectPage();applyLogic();return}
+  if(el.id==='hfile'){
+    const file=el.files&&el.files[0];if(!file){S.homeFile=null;return}
+    try{
+      let text='';
+      if(/\.docx$/i.test(file.name)){if(!window.mammoth)throw 0;text=(await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()})).value}
+      else text=await file.text();
+      S.homeFile={name:file.name,text:text};S.homeAi.err='';
+    }catch(x){S.homeFile=null;S.homeAi.err=t('fileErr')}
+    const ta=$('#hai'),v=ta?ta.value:'';render();const n=$('#hai');if(n)n.value=v;return;
+  }
+  if(el.id==='himg'&&el.files&&el.files[0]&&f){readImage(el.files[0]);return}
+  if(!f||S.route.type!=='edit')return;
+  const fk=el.dataset.form;
+  if(fk==='lang'||fk==='font'){f[fk]=el.value;touch();render();return}
+  if(fk==='accepting'||fk==='oneResp'||fk==='quiz'||fk==='showScore'){f[fk]=el.checked;touch();if(fk==='quiz')render();return}
+  if(fk==='closeAt'){const d=el.value?new Date(el.value):null;f.closeAt=d&&!isNaN(d)?d.toISOString():'';touch();return}
+  if(fk==='maxResponses'){f.maxResponses=Math.max(0,Math.floor(Number(el.value)||0));touch();return}
+  const card=el.closest('.qcard');if(!card||!el.dataset.q)return;
+  const q=f.questions[+card.dataset.i],k=el.dataset.q,qi=+card.dataset.i;
+  if(k==='type'){q.type=el.value;if(OPTT.has(q.type)&&!q.options.length)q.options=[t('opt',f.lang)+' 1',t('opt',f.lang)+' 2'];
+    if((q.type==='grid'||q.type==='gridm')&&!rowsOf(q).length){q.rows=[t('row',f.lang)+' 1',t('row',f.lang)+' 2'];q.cols=[t('col',f.lang)+' 1',t('col',f.lang)+' 2',t('col',f.lang)+' 3']}
+    q.correct=[];touch();render()}
+  else if(k==='req'){q.required=el.checked;touch()}
+  else if(k==='min'||k==='max'){q[k]=+el.value;if(q.min>=q.max)q.max=q.min+1;touch();render()}
+  else if(k==='corr'){const j=+el.dataset.j;
+    if(q.type==='multi'){const p=q.correct.indexOf(j);if(el.checked&&p<0)q.correct.push(j);else if(!el.checked&&p>=0)q.correct.splice(p,1)}
+    else q.correct=el.checked?[j]:[];
+    touch();render()}
+  else if(k==='lq'){
+    if(!el.value)q.showIf=null;
+    else{const s=f.questions.find(x=>x.id===el.value);q.showIf={q:el.value,op:'eq',vi:OPTT.has(s.type)?0:undefined,v:s.type==='scale'?String(s.min):''}}
+    touch();render()}
+  else if(k==='lop'&&q.showIf){q.showIf.op=el.value;touch()}
+  else if(k==='lv'&&q.showIf){const s=f.questions.find(x=>x.id===q.showIf.q);if(s&&OPTT.has(s.type))q.showIf.vi=+el.value;else q.showIf.v=el.value;touch()}
+});
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='fillform')return;
+  e.preventDefault();
+  const P=curPages();
+  if((S.fill.page||0)<P.length-1)goNext();else submitFill();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){if(e.target.id==='aiq')sendAI();if(e.target.id==='hai')homeAI()}});
+
+/* ---------- boot ---------- */
+function parseRoute(){const m=/^\/f\/([A-Za-z0-9_-]+)\/?$/.exec(location.pathname);return m?{type:'fill',id:m[1]}:null}
+async function loadFill(id){
+  S.fill={loading:true};S.fillForm=null;render();
+  let f=null,mine=null;
+  try{f=await store.get(id)}catch(e){}
+  if(f){f=Object.assign(blank(f.lang||'ar'),f);f.questions=(f.questions||[]).map(q=>Object.assign(mkQ(q.type,f.lang),q))}
+  S.fillForm=f;
+  S.fill={ans:{},page:0};
+  if(f&&f.oneResp&&!S.route.preview){mine=await store.mine(id);if(mine&&mine.answers){S.fill.ans=clone(mine.answers);S.fill.edit=true}}
+  render();
+}
+async function boot(){
+  try{const u=localStorage.getItem('sv_ui');if(LI[u]!==undefined)S.ui=u;const th=localStorage.getItem('sv_th');if(th)document.documentElement.dataset.theme=th}catch(e){}
+  const r=parseRoute();if(r)S.route=r;
+  render();
+  try{CFG=await (await fetch('/api/config')).json()}catch(e){CFG={}}
+  if(r){store=publicStore();S.ready=true;await loadFill(r.id);return}
+  if(!CFG.supabaseUrl||!CFG.supabaseKey||!window.supabase){S.setupErr=true;S.ready=true;render();return}
+  SB=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey);
+  const {data}=await SB.auth.getSession();S.session=data.session;
+  SB.auth.onAuthStateChange((ev,ses)=>{const had=!!S.session;S.session=ses;if(!!ses!==had)location.reload()});
+  S.ready=true;
+  if(S.session){store=ownerStore();S.canEdit=true;render();await store.watch(list=>{S.forms=list;if(S.route.type==='home')render()})}
+  render();
+}
+boot();
+})();
+</script>
+</body>
+</html>
